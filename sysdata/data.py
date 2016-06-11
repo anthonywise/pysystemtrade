@@ -53,8 +53,9 @@ class Data(object):
         :returns: Tx1 pd.Series
 
         """
-        instrprice = self.get_raw_price(instrument_code)
-        dailyprice = instrprice.resample("1B", how="last")
+        #instrprice = self.get_raw_price(instrument_code)
+        #dailyprice = instrprice.resample("1B", how="last")
+        dailyprice = self.get_raw_price(instrument_code)
 
         return dailyprice
 

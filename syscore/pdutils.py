@@ -220,7 +220,7 @@ def drawdown(x):
 
     :returns: pd.DataFrame or Series
     """
-    maxx = pd.rolling_max(x, 99999999, min_periods=1)
+    maxx = pd.rolling_max(x, 999999, min_periods=1) #six digits instead of 8 for python crashing error
     return x - maxx
 
 
