@@ -157,7 +157,7 @@ class csvFuturesData(FuturesData):
         self.log.msg("Loading csv data for %s" % instrument_code, instrument_code=instrument_code)
         filename = os.path.join(self._datapath, instrument_code + "_price.csv")
         instrpricedata = pd_readcsv(filename)
-        instrpricedata.columns = ["price","open","high","low","volume"]
+        instrpricedata.columns = ["price"]
         instrpricedata = instrpricedata.groupby(level=0).last()
         instrpricedata = pd.Series(instrpricedata.iloc[:,0])
         return instrpricedata
@@ -197,7 +197,7 @@ class csvFuturesData(FuturesData):
 
     def _get_instrument_data(self):
         """
-        Get a data frame of interesting information about instruments, eithier
+        Get a data frame of interesting information about instruments, either
         from a file or cached
 
         :returns: pd.DataFrame
