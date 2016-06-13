@@ -1,5 +1,5 @@
 """
-Get legacy data from .csv files
+Get TradeStation data from .csv files
 
 Used for quick examples / 'scaffolding'
 """
@@ -10,9 +10,7 @@ import pandas as pd
 
 from syscore.fileutils import get_pathname_for_package
 from syscore.pdutils import pd_readcsv
-from syscore.genutils import str_of_int
 
-from sysdata.futuresdata import FuturesData
 from sysdata.csvdata import csvFuturesData
 
 """
@@ -42,9 +40,9 @@ class tscsvFuturesData(csvFuturesData):
 
         :returns: new tscsvFuturesData object
 
-        >>> data=csvFuturesData("sysdata.tests")
+        >>> data=tscsvFuturesData("sysdata.tests")
         >>> data
-        FuturesData object with 3 instruments
+        FuturesData object with 38 instruments
 
 
         """
@@ -70,10 +68,10 @@ class tscsvFuturesData(csvFuturesData):
 
         :returns: pd.DataFrame
 
-        >>> data=csvFuturesData("sysdata.tests")
-        >>> data.get_raw_price("EDOLLAR").tail(2)
-        2015-12-11 17:08:14    97.9675
-        2015-12-11 19:33:39    97.9875
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_price("CORN").tail(2)
+        2016-06-09    426.5
+        2016-06-10    423.0
         Name: price, dtype: float64
         >>> data["US10"].tail(2)
         2015-12-11 16:06:35    126.914062
@@ -99,15 +97,11 @@ class tscsvFuturesData(csvFuturesData):
 
         :returns: pd.DataFrame
 
-        >>> data=csvFuturesData("sysdata.tests")
-        >>> data.get_raw_price("EDOLLAR").tail(2)
-        2015-12-11 17:08:14    97.9675
-        2015-12-11 19:33:39    97.9875
-        Name: price, dtype: float64
-        >>> data["US10"].tail(2)
-        2015-12-11 16:06:35    126.914062
-        2015-12-11 17:24:06    126.945312
-        Name: price, dtype: float64
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_data("CORN").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        2016-06-09        426.5      430.25      430.25     423.25  262525
+        2016-06-10        423.0      426.50      437.00     420.00  270454
         """
 
         # Read from .csv
