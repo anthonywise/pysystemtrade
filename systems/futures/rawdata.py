@@ -31,7 +31,7 @@ class FuturesRawData(RawData):
         if you add another method to this you also need to add its blank dict here
         """
 
-        protected = []
+        protected = ['get_raw_data']
         update_recalc(self, protected)
         
         setattr(self, "description", "futures")
@@ -77,7 +77,7 @@ class FuturesRawData(RawData):
         :param instrument_code: instrument to get data for
         :type instrument_code: str
 
-        :returns: Tx4 pd.DataFrame
+        :returns: Tx1 pd.DataFrame
 
         >>> from systems.tests.testfuturesrawdata import get_test_object_futures
         >>> from systems.basesystem import System
@@ -113,7 +113,7 @@ class FuturesRawData(RawData):
         :param instrument_code: instrument to get data for
         :type instrument_code: str
 
-        :returns: Tx4 pd.DataFrame
+        :returns: Tx1 pd.DataFrame
 
         >>> from systems.tests.testfuturesrawdata import get_test_object_futures
         >>> from systems.basesystem import System
@@ -145,7 +145,7 @@ class FuturesRawData(RawData):
         :param instrument_code: instrument to get data for
         :type instrument_code: str
 
-        :returns: Tx4 pd.DataFrame
+        :returns: Tx1 pd.DataFrame
 
         >>> from systems.tests.testfuturesrawdata import get_test_object_futures
         >>> from systems.basesystem import System
@@ -184,7 +184,7 @@ class FuturesRawData(RawData):
         :param instrument_code: instrument to get data for
         :type instrument_code: str
 
-        :returns: Tx4 pd.DataFrame
+        :returns: Tx1 pd.DataFrame
 
         KEY OUTPUT
 
@@ -234,7 +234,7 @@ class FuturesRawData(RawData):
         def _daily_denominator_prices(system, instrument_code, this_stage):
             prices = this_stage.get_instrument_raw_carry_data(
                 instrument_code).PRICE
-            daily_prices = prices.resample("1B", how="last")
+            daily_prices = prices.resample("1B", how="last") #may not need to resample
             return daily_prices
 
         daily_dem_prices = self.parent.calc_or_cache(
@@ -242,6 +242,40 @@ class FuturesRawData(RawData):
 
         return daily_dem_prices
 
+    def get_raw_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_raw_data(system, instrument_code, this_stage_notused):
+            instrpricedata = system.data.get_raw_data(
+                instrument_code)
+            return instrpricedata
+
+        raw_data = self.parent.calc_or_cache("raw_data_prices",
+                                              instrument_code,
+                                              _get_raw_data, self)
+
+        return raw_data
 
 if __name__ == '__main__':
     import doctest

@@ -81,11 +81,12 @@ class tscsvFuturesData(csvFuturesData):
 
         # Read from .csv
         self.log.msg("Loading TradeStation csv price for %s" % instrument_code, instrument_code=instrument_code)
-        filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
-        instrprice = pd_readcsv(filename)
-        instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
-        instrprice = instrprice.groupby(level=0).last()
-        instrprice = pd.Series(instrprice.iloc[:, 0])
+        #filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
+        #instrprice = pd_readcsv(filename)
+        #instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
+        #instrprice = instrprice.groupby(level=0).last()
+        instrpricedataframe = self.get_raw_data(instrument_code)
+        instrprice = pd.Series(instrpricedataframe.iloc[:, 0])
         return instrprice
 
     def get_raw_data(self, instrument_code):
