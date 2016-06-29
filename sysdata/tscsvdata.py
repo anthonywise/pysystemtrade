@@ -7,11 +7,14 @@ Used for quick examples / 'scaffolding'
 import os
 
 import pandas as pd
+import numpy as np
 
 from syscore.fileutils import get_pathname_for_package
 from syscore.pdutils import pd_readcsv
 
 from sysdata.csvdata import csvFuturesData
+
+from copy import copy, deepcopy
 
 """
 Static variables to store location of data
@@ -80,18 +83,18 @@ class tscsvFuturesData(csvFuturesData):
         """
 
         # Read from .csv
-        self.log.msg("Loading TradeStation csv price for %s" % instrument_code, instrument_code=instrument_code)
+        self.log.msg("Retrieving TradeStation Daily Closing Prices for %s" % instrument_code, instrument_code=instrument_code)
         #filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
         #instrprice = pd_readcsv(filename)
         #instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
         #instrprice = instrprice.groupby(level=0).last()
-        instrpricedataframe = self.get_raw_data(instrument_code)
-        instrprice = pd.Series(instrpricedataframe.iloc[:, 0])
+        instrpricedataframe = self.get_raw_daily_data(instrument_code)
+        instrprice = pd.Series(instrpricedataframe.iloc[:, 0]) #might need to change to 'close_price'
         return instrprice
 
     def get_raw_data(self, instrument_code):
         """
-        Get instrument data
+        Get raw instrument data
 
         :param instrument_code: instrument to get data for
         :type instrument_code: str
@@ -113,3 +116,31 @@ class tscsvFuturesData(csvFuturesData):
         instrpricedata = instrpricedata.groupby(level=0).last()
         instrpricedata = pd.DataFrame(instrpricedata)
         return instrpricedata
+
+    def get_raw_daily_data(self, instrument_code):
+        """
+        Get raw instrument data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: pd.DataFrame
+
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_data("CORN").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        2016-06-09        426.5      430.25      430.25     423.25  262525
+        2016-06-10        423.0      426.50      437.00     420.00  270454
+        """
+
+        # Read from .csv
+        self.log.msg("Loading TradeStation daily data for %s" % instrument_code, instrument_code=instrument_code)
+        #filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
+        #instrpricedata = pd_readcsv(filename)
+        #instrpricedata.columns = ["close_price", "open_price", "high_price", "low_price", "volume"]
+        instrdailydata = copy(self.get_raw_data(instrument_code))
+        #instrdailydata.groupby(level=0).last()
+        dailydata = instrdailydata.resample('D').agg({'close_price': "last", 'open_price': "first", 'high_price': np.max,
+                                          'low_price': np.min, 'volume': np.sum})
+        dailydata = dailydata.dropna(how='all')
+        return dailydata
