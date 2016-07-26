@@ -89,7 +89,7 @@ class tscsvFuturesData(csvFuturesData):
         #instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
         #instrprice = instrprice.groupby(level=0).last()
         instrpricedataframe = self.get_raw_daily_data(instrument_code)
-        instrprice = pd.Series(instrpricedataframe.iloc[:, 0]) #might need to change to 'close_price'
+        instrprice = pd.Series(instrpricedataframe.iloc[:, 0]) # TODO: need to change to 'close_price'
         return instrprice
 
     def get_raw_data(self, instrument_code):

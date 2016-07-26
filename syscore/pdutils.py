@@ -13,12 +13,14 @@ def turnover(x, y):
     
     Returned in annualised terms
     """
-    
+    # Probably not used much since Y is pd.Series of avg_pos_for_turnover
     if type(y) is float:
         y=pd.Series([y]*len(x.index) , x.index)
     
     norm_x= x / y.ffill()
-    
+
+    #TODO: Need to reindex first, then ffill() the result to get rid of NaN's
+    # example: = weights.reindex(pdm_ffill.index, method='ffill')
     avg_daily=float(norm_x.diff().abs().resample("1B", how="sum").mean())
 
     return avg_daily*BUSINESS_DAYS_IN_YEAR

@@ -70,7 +70,7 @@ forecast_weight_estimate:
    equalise_gross: False
    cost_multiplier: 0.0
    apply_cost_weight: True
-   ceiling_cost_SR: 0.13
+   ceiling_cost_SR: 0.99
    frequency: "W"
    date_method: "expanding"
    rollyears: 20

@@ -134,7 +134,7 @@ class Account(SystemStage):
             price=self.get_daily_price(instrument_code)
             forecast=self.get_capped_forecast(instrument_code, rule_variation_name)
             
-            forecast=forecast.reindex(price.index).ffill()
+            forecast=forecast.reindex(price.index).ffill() # TODO: aligned to daily price and reindex takes first forecast only!
             
             return forecast
         
@@ -248,7 +248,7 @@ class Account(SystemStage):
             price=this_stage.get_daily_price(instrument_code)
             sspos=this_stage.get_subsystem_position(instrument_code)
             
-            sspos = sspos.reindex(price.index).ffill()
+            sspos = sspos.reindex(price.index).ffill() # TODO: aligned to daily price and reindex takes first forecast only
             
             return sspos
         
@@ -433,6 +433,7 @@ class Account(SystemStage):
         2500
         """
 
+        # TODO: May need to Override in tscsvFuturesData
         def _get_value_of_price_move(system, instrument_code, this_stage):
             return  system.data.get_value_of_block_price_move(
                                                         instrument_code)
@@ -470,6 +471,8 @@ class Account(SystemStage):
         0.0025000000000000001
         
         """
+
+        # TODO: Override in tscsvFuturesData
         def _get_raw_cost_data(system, instrument_code, this_stage):
             return system.data.get_raw_cost_data(instrument_code)
 
@@ -626,6 +629,7 @@ class Account(SystemStage):
         isf=self.get_instrument_scaling_factor(instrument_code)
 
         (fsf, isf)= fsf.align(isf, join="inner")
+        # TODO: join outer so aligned to lower TF; then ffill() isf
         
         return fsf*isf
     
@@ -1012,7 +1016,7 @@ class Account(SystemStage):
             average_position_for_turnover=this_stage.get_aligned_volatility_scalar(instrument_code)  *  this_stage.get_instrument_scaling_factor(instrument_code)
             
             positions = this_stage.get_buffered_position(instrument_code, roundpositions = roundpositions)
-            
+            # TODO: fix turnover function to prevent NaN
             return turnover(positions, average_position_for_turnover)
 
         instr_turnover = self.parent.calc_or_cache(
