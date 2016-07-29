@@ -12,6 +12,7 @@ from syscore.dateutils import ROOT_BDAYS_INYEAR
 from syscore.pdutils import  turnover
 
 from syscore.objects import resolve_function
+from syscore.objects import resolve_data_method
 
 ARBITRARY_FORECAST_CAPITAL=100.0
 
@@ -413,6 +414,28 @@ class Account(SystemStage):
 
         return instrument_price
 
+    # new function to get trading rule relevant closing prices
+    def get_trading_rule_price(self, instrument_code):
+        """
+            Get the instrument price from data relevant to the trading rule
+
+            KEY INPUT
+
+            :param instrument_code:
+            :type str:
+
+            :returns: Tx1 pd.DataFrames
+
+            """
+
+        def _get_trading_rule_price(system, instrument_code, this_stage):
+            return system.data.get_raw_close(instrument_code)
+
+        instrument_close = self.parent.calc_or_cache(
+            'get_trading_rule_price', instrument_code, _get_trading_rule_price, self)
+
+        return instrument_close
+
     def get_value_of_price_move(self, instrument_code):
         """
         Get the value of a price move from raw data
@@ -603,7 +626,9 @@ class Account(SystemStage):
             fcast_weight_this_code = forecast_weights[
                 rule_variation_name]
         else:
-            fcast_weight_this_code = self.get_aligned_forecast(instrument_code, rule_variation_name)
+            #fcast_weight_this_code = self.get_aligned_forecast(instrument_code, rule_variation_name)
+            # using minute data for forecasts
+            fcast_weight_this_code = self.get_capped_forecast(instrument_code, rule_variation_name)
             fcast_weight_this_code[:]=0.0
 
         multiplier = fcast_weight_this_code* fdm
@@ -1622,13 +1647,30 @@ class Account(SystemStage):
                                instrument_code=instrument_code, rule_variation_name=rule_variation_name)
     
             ## by construction all these things are aligned
+            # still need daily prices for vol calc / positions
             price = this_stage.get_daily_price(instrument_code)
+
+            #USE price TF appropriate for the particular rule
+            #raw_close = this_stage.get_trading_rule_price(instrument_code)
+            data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
+            #data_params = data_params["data"][0]
+            data_func = resolve_data_method(system, data_params)
+            relevant_price = data_func(instrument_code)
+
+            """
+            # using minute data for forecasts
             forecast = this_stage.get_aligned_forecast(
                 instrument_code, rule_variation_name)
+            """
+            forecast = this_stage.get_capped_forecast(
+                instrument_code, rule_variation_name)
+
+            # don't think I need to touch vol bc already calculated
             get_daily_returns_volatility = this_stage.get_daily_returns_volatility(
                 instrument_code)
     
             ## We NEVER use cash costs for forecasts ...
+            # don't think I need to change bc it uses capped forecasts
             SR_cost = this_stage.get_SR_cost_for_instrument_forecast(instrument_code, rule_variation_name)
                         
             ## We use percentage returns (as no 'capital') and don't round positions

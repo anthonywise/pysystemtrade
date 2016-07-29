@@ -89,7 +89,7 @@ class tscsvFuturesData(csvFuturesData):
         #instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
         #instrprice = instrprice.groupby(level=0).last()
         instrpricedataframe = self.get_raw_daily_data(instrument_code)
-        instrprice = pd.Series(instrpricedataframe.iloc[:, 0]) # TODO: need to change to 'close_price'
+        instrprice = pd.Series(instrpricedataframe.close_price)
         return instrprice
 
     def get_raw_data(self, instrument_code):
@@ -144,3 +144,21 @@ class tscsvFuturesData(csvFuturesData):
                                           'low_price': np.min, 'volume': np.sum})
         dailydata = dailydata.dropna(how='all')
         return dailydata
+
+    def get_raw_close(self, instrument_code):
+        """
+        Get raw closing price
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: pd.DataFrame
+
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_close("CORN").tail(2)
+        2016-06-29 19:15:00    379.5
+        2016-06-29 19:20:00    379.5
+        """
+        instrpricedataframe = self.get_raw_data(instrument_code)
+        instrprice = pd.Series(instrpricedataframe.close_price)
+        return instrprice

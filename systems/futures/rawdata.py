@@ -277,6 +277,8 @@ class FuturesRawData(RawData):
 
         return raw_data
 
+    # get_raw_close?
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
