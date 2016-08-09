@@ -17,12 +17,15 @@ def turnover(x, y):
     if type(y) is float:
         y=pd.Series([y]*len(x.index) , x.index)
     
-    norm_x= x / y.ffill()
+    y=y.reindex(x.index, method='ffill')
+    norm_x= x / y
 
-    #TODO: Need to reindex first, then ffill() the result to get rid of NaN's
-    # example: = weights.reindex(pdm_ffill.index, method='ffill')
-    avg_daily=float(norm_x.diff().abs().resample("1B", how="sum").mean())
-
+    avg_daily=float(norm_x.diff().abs().resample("1B", how="sum").mean()) #should work for minute as well
+    #TODO: Need different avg_daily formulas depending on if data is daily/minute OR weekly
+    """
+        avg_daily = float(norm_x.diff().abs().resample("D", how="sum").dropna(how="all")
+            .diff().abs().resample("1B", how="sum").mean())
+    """
     return avg_daily*BUSINESS_DAYS_IN_YEAR
 
 def uniquets(x):

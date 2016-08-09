@@ -183,6 +183,8 @@ class Account(SystemStage):
         """
         Get instrument div mult
 
+        If fixed, returns on relevant TF. If estimated, returns daily.
+
         :returns: Tx1 pd.DataFrame
 
         KEY INPUT
@@ -415,7 +417,7 @@ class Account(SystemStage):
         return instrument_price
 
     # new function to get trading rule relevant closing prices
-    def get_trading_rule_price(self, instrument_code):
+    def get_trading_rule_price(self, instrument_code, rule_variation_name):
         """
             Get the instrument price from data relevant to the trading rule
 
@@ -428,13 +430,23 @@ class Account(SystemStage):
 
             """
 
-        def _get_trading_rule_price(system, instrument_code, this_stage):
-            return system.data.get_raw_close(instrument_code)
+        def _get_trading_rule_price(system, instrument_code, rule_variation_name, this_stage):
+            # USE price TF appropriate for the particular rule
+            data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
+            data_func = resolve_data_method(system, data_params)
+            raw_data = data_func(instrument_code)
+            if type(raw_data) is pd.DataFrame:
+                relevant_price = pd.Series(raw_data.close_price)
+            else:
+                relevant_price = raw_data
 
-        instrument_close = self.parent.calc_or_cache(
-            'get_trading_rule_price', instrument_code, _get_trading_rule_price, self)
+            return relevant_price
 
-        return instrument_close
+        trading_rule_price = self.parent.calc_or_cache_nested(
+            'get_trading_rule_price', instrument_code, rule_variation_name,
+            _get_trading_rule_price, self)
+
+        return trading_rule_price
 
     def get_value_of_price_move(self, instrument_code):
         """
@@ -562,7 +574,7 @@ class Account(SystemStage):
         """
         
         def _get_aligned_vol_scalar(system, instrument_code,  this_stage):
-            price=this_stage.get_daily_price(instrument_code)
+            price=this_stage.get_daily_price(instrument_code) # raw daily close, not reindexed or resampled
             vs=this_stage.get_volatility_scalar(instrument_code)
             
             vs = vs.reindex(price.index).ffill()
@@ -592,17 +604,18 @@ class Account(SystemStage):
         :returns: Tx1 pd.DataFrame
         
         """
-        idm = self.get_instrument_diversification_multiplier()
-        instr_weights = self.get_instrument_weights()
+        idm = self.get_instrument_diversification_multiplier()  # Minute or Daily depending on if rule cheap enough
+        instr_weights = self.get_instrument_weights()           # Minute or Daily depending on if rule cheap enough
 
         inst_weight_this_code = instr_weights[
             instrument_code]
 
         multiplier = inst_weight_this_code * idm
         
-        price = self.get_daily_price(instrument_code)
-        
-        return multiplier.reindex(price.index).ffill()
+        price = self.get_daily_price(instrument_code) # raw daily close, not reindexed or resampled
+        # I should reindex to the IDM so it's aligned with the lowest TF and with fsf
+        # return multiplier.reindex(price.index).ffill()
+        return multiplier.reindex(idm.index).ffill()
     
     def get_forecast_scaling_factor(self, instrument_code, rule_variation_name):
         """
@@ -618,8 +631,9 @@ class Account(SystemStage):
         
         """
         
-        fdm = self.get_forecast_diversification_multiplier(instrument_code)
-        forecast_weights = self.get_forecast_weights(instrument_code)
+        fdm = self.get_forecast_diversification_multiplier(instrument_code)  # Minute or Daily TF depending on
+                                                                             # lowest TF rule for ins
+        forecast_weights = self.get_forecast_weights(instrument_code)        # Minute or Daily TF
         
         if rule_variation_name in forecast_weights.columns:
             
@@ -628,7 +642,8 @@ class Account(SystemStage):
         else:
             #fcast_weight_this_code = self.get_aligned_forecast(instrument_code, rule_variation_name)
             # using minute data for forecasts
-            fcast_weight_this_code = self.get_capped_forecast(instrument_code, rule_variation_name)
+            fcast_weight_this_code = self.get_aligned_forecast(instrument_code, rule_variation_name)
+            fcast_weight_this_code = fcast_weight_this_code.reindex(fdm.index).ffill()
             fcast_weight_this_code[:]=0.0
 
         multiplier = fcast_weight_this_code* fdm
@@ -650,11 +665,12 @@ class Account(SystemStage):
         
         """
         
-        fsf=self.get_forecast_scaling_factor(instrument_code, rule_variation_name)
-        isf=self.get_instrument_scaling_factor(instrument_code)
+        fsf=self.get_forecast_scaling_factor(instrument_code, rule_variation_name)  # Minute or Daily TF depending on
+                                                                                    # lowest TF rule for ins
+        isf=self.get_instrument_scaling_factor(instrument_code)                     # Minute or Daily TF
 
         (fsf, isf)= fsf.align(isf, join="inner")
-        # TODO: join outer so aligned to lower TF; then ffill() isf
+        # TODO: Shouldn't this add to 1.0? I got 1.0769. join outer so aligned to lower TF; then ffill() isf
         
         return fsf*isf
     
@@ -673,7 +689,8 @@ class Account(SystemStage):
         all_risk_allocations = [self.get_instrument_forecast_scaling_factor(instrument_code, rule_variation_name) for 
                                 instrument_code in instrument_list]
         all_risk_allocations=pd.concat(all_risk_allocations, axis=1)
-        
+        # TODO: if rule is on different TF and ins, this time series do not line up properly
+        # TODO: and may affect proper capital in and therefore P&L...
         return all_risk_allocations.sum(axis=1)
         
     def get_SR_cost(self, instrument_code):
@@ -810,7 +827,11 @@ class Account(SystemStage):
         def _subsystem_turnover(
                 system, instrument_code,  this_stage, roundpositions):
 
-            positions = this_stage.get_aligned_subsystem_position(instrument_code)
+            # Use the regular subsystem position instead
+            #positions = this_stage.get_aligned_subsystem_position(instrument_code)
+            positions = this_stage.get_subsystem_position(instrument_code)
+
+            # Keep aligned bc non-aligned is daily anyway
             average_position_for_turnover=this_stage.get_aligned_volatility_scalar(instrument_code)
             
             return turnover(positions, average_position_for_turnover)
@@ -1037,11 +1058,15 @@ class Account(SystemStage):
         """
         def _instrument_turnover(
                 system, instrument_code,  this_stage, roundpositions):
+            # Keep aligned volatility scalar since it is realigned to raw daily closes
+            average_position_for_turnover = this_stage.get_aligned_volatility_scalar(
+                instrument_code) * this_stage.get_instrument_scaling_factor(instrument_code)
 
-            average_position_for_turnover=this_stage.get_aligned_volatility_scalar(instrument_code)  *  this_stage.get_instrument_scaling_factor(instrument_code)
-            
             positions = this_stage.get_buffered_position(instrument_code, roundpositions = roundpositions)
-            # TODO: fix turnover function to prevent NaN
+
+            # Aligned to positions not necessary bc new turnover function aligns
+            # average_position_for_turnover = average_position_for_turnover.reindex(positions.index).ffill()
+
             return turnover(positions, average_position_for_turnover)
 
         instr_turnover = self.parent.calc_or_cache(
@@ -1419,7 +1444,9 @@ class Account(SystemStage):
                 system, NOTUSEDinstrument_code_ref, rule_variation_name, this_stage,
                 instrument_code_list):
 
-            average_forecast_for_turnover=system_defaults['average_absolute_forecast']
+            # My average forecast is not "10", so this may need to change (i.e. make 1)
+            # average_forecast_for_turnover=system_defaults['average_absolute_forecast']
+            average_forecast_for_turnover=self.parent.config.average_absolute_forecast
 
             forecast_list=[this_stage.get_capped_forecast(
                 instrument_code, rule_variation_name)
@@ -1651,11 +1678,12 @@ class Account(SystemStage):
             price = this_stage.get_daily_price(instrument_code)
 
             #USE price TF appropriate for the particular rule
-            #raw_close = this_stage.get_trading_rule_price(instrument_code)
-            data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
-            #data_params = data_params["data"][0]
-            data_func = resolve_data_method(system, data_params)
-            relevant_price = data_func(instrument_code)
+            relevant_price = this_stage.get_trading_rule_price(instrument_code, rule_variation_name)
+            #data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
+            #data_func = resolve_data_method(system, data_params)
+            #relevant_price = data_func(instrument_code)
+            # only need relevant_price for tscsvFuturesData, don't need for
+            # csvFuturesData (yet) as only using daily data.
 
             """
             # using minute data for forecasts
@@ -1674,8 +1702,8 @@ class Account(SystemStage):
             SR_cost = this_stage.get_SR_cost_for_instrument_forecast(instrument_code, rule_variation_name)
                         
             ## We use percentage returns (as no 'capital') and don't round positions
-            pandl_fcast = accountCurve(price, forecast=forecast, delayfill=delayfill, 
-                                       roundpositions=False,
+            pandl_fcast = accountCurve(price, relevant_price=relevant_price, forecast=forecast, delayfill=delayfill,
+                                roundpositions=False,
                                 value_of_price_point=1.0, capital=ARBITRARY_FORECAST_CAPITAL,
                                 SR_cost=SR_cost, cash_costs=None,
                                 get_daily_returns_volatility=get_daily_returns_volatility)

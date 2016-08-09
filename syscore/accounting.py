@@ -60,7 +60,7 @@ def account_test(ac1, ac2):
 
 
 
-def pandl_with_data(price, trades=None, marktomarket=True, positions=None,
+def pandl_with_data(price, relevant_price=None, trades=None, marktomarket=True, positions=None,
           delayfill=True, roundpositions=False,
           get_daily_returns_volatility=None, forecast=None, fx=None,
           daily_risk_capital=None, 
@@ -143,7 +143,10 @@ def pandl_with_data(price, trades=None, marktomarket=True, positions=None,
 
     if trades is None:
         
-        prices_to_use = copy(price)
+        if relevant_price is None:
+            prices_to_use = copy(price)
+        else:
+            prices_to_use = copy(relevant_price)
         if positions is None:
                 positions = get_positions_from_forecasts(price,
                                                          get_daily_returns_volatility,
@@ -193,7 +196,8 @@ def pandl_with_data(price, trades=None, marktomarket=True, positions=None,
 
     instr_ccy_returns = cum_trades.shift(1)* price_returns * value_of_price_point
     
-    instr_ccy_returns=instr_ccy_returns.cumsum().ffill().reindex(price.index).diff()
+    #instr_ccy_returns=instr_ccy_returns.cumsum().ffill().reindex(price.index).diff()
+    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all')
     base_ccy_returns = instr_ccy_returns * use_fx
     
     return (cum_trades, trades_to_use, instr_ccy_returns,
@@ -268,6 +272,7 @@ def get_positions_from_forecasts(price, get_daily_returns_volatility, forecast,
     multiplier = daily_risk_capital * 1.0 * 1.0 / 10.0
 
     denominator = (value_of_price_point * get_daily_returns_volatility* use_fx)
+    denominator = denominator.reindex(forecast.index, method='ffill')
 
     numerator = forecast *  multiplier
 
@@ -624,7 +629,7 @@ class accountCurveSingle(accountCurveSingleElement):
 
 class accountCurve(accountCurveSingle):
 
-    def __init__(self, price=None,   cash_costs=None, SR_cost=None, 
+    def __init__(self, price=None, relevant_price=None,   cash_costs=None, SR_cost=None,
                  capital=None, ann_risk_target=None, pre_calc_data=None,
                  weighted_flag = False, weighting=None, 
                 apply_weight_to_costs_only=False,
@@ -655,7 +660,7 @@ class accountCurve(accountCurveSingle):
 
         
         **kwargs  passed to profit and loss calculation
-         (price, trades, marktomarket, positions,
+         (price, relevant_price, trades, marktomarket, positions,
           delayfill, roundpositions,
           get_daily_returns_volatility, forecast, use_fx,
           value_of_price_point)
@@ -675,9 +680,13 @@ class accountCurve(accountCurveSingle):
               - calculating costs from SR costs (always a time series): ann_risk
               - calculating percentage returns (maybe fixed or variable time series): base_capital
             """
-            (base_capital, ann_risk, daily_risk_capital)=resolve_capital(price, capital, ann_risk_target)
+            if relevant_price is None:
+                (base_capital, ann_risk, daily_risk_capital) = resolve_capital(price, capital, ann_risk_target)
+            else:
+                (base_capital, ann_risk, daily_risk_capital) = resolve_capital(relevant_price, capital, ann_risk_target)
+            #(base_capital, ann_risk, daily_risk_capital)=resolve_capital(price_for_ts, capital, ann_risk_target)
 
-            returns_data=pandl_with_data(price, daily_risk_capital=daily_risk_capital,  **kwargs)
+            returns_data=pandl_with_data(price, relevant_price, daily_risk_capital=daily_risk_capital,  **kwargs)
     
             (cum_trades, trades_to_use, instr_ccy_returns,
                 base_ccy_returns, use_fx, value_of_price_point)=returns_data
@@ -737,7 +746,7 @@ class accountCurve(accountCurveSingle):
 
         
         if weighted_flag:
-            use_weighting = weighting.reindex(base_ccy_returns.index).ffill()
+            use_weighting = weighting.reindex(base_ccy_returns.index).ffill() #TODO: weighting can be minute so may not line up correctly
             if not apply_weight_to_costs_only:
                 ## only apply to gross returns if they aren't already weighted
                 base_ccy_returns = base_ccy_returns* use_weighting

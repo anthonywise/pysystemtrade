@@ -478,6 +478,7 @@ class PositionSizing(SystemStage):
             """
             We don't allow this to be changed in config
             """
+            # TODO: Why not? Could change this to 1.0
             avg_abs_forecast = system_defaults['average_absolute_forecast']
 
             vol_scalar = this_stage.get_volatility_scalar(instrument_code)
