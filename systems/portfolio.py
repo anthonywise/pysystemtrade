@@ -682,8 +682,6 @@ class PortfoliosEstimated(PortfoliosFixed):
         
         Estimated from correlations and weights
 
-        RETURNS DAILY; NOT ON MINUTE BAR TF (WHICH IS PROBABLY NOT NEEDED)
-
         :returns: Tx1 pd.DataFrame
 
         >>> from systems.tests.testdata import get_test_object_futures_with_pos_sizing_estimates
