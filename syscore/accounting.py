@@ -197,7 +197,14 @@ def pandl_with_data(price, relevant_price=None, trades=None, marktomarket=True, 
     instr_ccy_returns = cum_trades.shift(1)* price_returns * value_of_price_point
     
     #instr_ccy_returns=instr_ccy_returns.cumsum().ffill().reindex(price.index).diff()
-    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all')
+    #instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all')
+    #if relevant_price is None:
+    #    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().ffill().reindex(price.index).diff()
+    #else:
+    #    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().ffill().reindex(relevant_price.index).diff()
+
+    #instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all').ffill().reindex(price.index).diff()
+    instr_ccy_returns = instr_ccy_returns.cumsum().ffill().resample('1B').agg(np.sum).reindex(price.index).diff()
     base_ccy_returns = instr_ccy_returns * use_fx
     
     return (cum_trades, trades_to_use, instr_ccy_returns,
@@ -274,9 +281,9 @@ def get_positions_from_forecasts(price, get_daily_returns_volatility, forecast,
     denominator = (value_of_price_point * get_daily_returns_volatility* use_fx)
     denominator = denominator.reindex(forecast.index, method='ffill')
 
-    numerator = forecast *  multiplier
+    numerator = forecast * multiplier
 
-    positions = numerator.ffill() /  denominator.ffill()
+    positions = numerator.ffill() / denominator.ffill()
 
     return positions
 
@@ -692,6 +699,7 @@ class accountCurve(accountCurveSingle):
                 base_ccy_returns, use_fx, value_of_price_point)=returns_data
                 
             ## always returns a time series
+            #TODO: NEED TO MAKE CALC_COSTS MINUTE COMPLIANT
             (costs_base_ccy, costs_instr_ccy)=calc_costs(returns_data, cash_costs, SR_cost, ann_risk)
             
             ## keep track of this

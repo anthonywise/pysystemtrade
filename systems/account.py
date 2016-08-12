@@ -574,7 +574,7 @@ class Account(SystemStage):
         """
         
         def _get_aligned_vol_scalar(system, instrument_code,  this_stage):
-            price=this_stage.get_daily_price(instrument_code) # raw daily close, not reindexed or resampled
+            price=this_stage.get_daily_price(instrument_code) # resampled 1B
             vs=this_stage.get_volatility_scalar(instrument_code)
             
             vs = vs.reindex(price.index).ffill()
@@ -612,7 +612,7 @@ class Account(SystemStage):
 
         multiplier = inst_weight_this_code * idm
         
-        price = self.get_daily_price(instrument_code) # raw daily close, not reindexed or resampled
+        # price = self.get_daily_price(instrument_code) # resampled 1B daily price
         # I should reindex to the IDM so it's aligned with the lowest TF and with fsf
         # return multiplier.reindex(price.index).ffill()
         return multiplier.reindex(idm.index).ffill()
@@ -725,7 +725,7 @@ class Account(SystemStage):
             
             
             daily_vol=this_stage.get_daily_returns_volatility(instrument_code)
-            daily_price=this_stage.get_daily_price(instrument_code)
+            daily_price=this_stage.get_daily_price(instrument_code) # Resampled 1B daily price
 
             last_date=daily_price.index[-1]
             start_date=last_date-pd.DateOffset(years=1)
@@ -738,7 +738,7 @@ class Account(SystemStage):
             price_percentage_cost=average_price*percentage_cost
             price_per_trade_cost=value_of_pertrade_commission/block_value ## assume one trade per contract
 
-            price_total=price_slippage+price_block_commission+price_percentage_cost+price_per_trade_cost
+            price_total=price_slippage+price_block_commission+price_percentage_cost+price_per_trade_cost # per contract
             
             avg_annual_vol = average_vol * ROOT_BDAYS_INYEAR
             
