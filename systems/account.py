@@ -1059,9 +1059,14 @@ class Account(SystemStage):
         def _instrument_turnover(
                 system, instrument_code,  this_stage, roundpositions):
             # Keep aligned volatility scalar since it is realigned to raw daily closes
+            avs = this_stage.get_aligned_volatility_scalar(instrument_code)
+            isf = this_stage.get_instrument_scaling_factor(instrument_code)
+            avs = avs.reindex(isf.index).ffill()
+            average_position_for_turnover = avs * isf
+            """
             average_position_for_turnover = this_stage.get_aligned_volatility_scalar(
                 instrument_code) * this_stage.get_instrument_scaling_factor(instrument_code)
-
+            """
             positions = this_stage.get_buffered_position(instrument_code, roundpositions = roundpositions)
 
             # Aligned to positions not necessary bc new turnover function aligns
