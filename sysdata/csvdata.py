@@ -162,6 +162,18 @@ class csvFuturesData(FuturesData):
         instrpricedata = pd.Series(instrpricedata.iloc[:,0])
         return instrpricedata
 
+    def get_raw_close(self, instrument_code):
+        """
+        For csvFuturesData, same as get_raw_price
+        :param instrument_code: instrument to get raw closing prices for
+        :type instrument_code: str
+
+        :return: pd.Series
+        """
+        raw_close = self.get_raw_price(instrument_code)
+
+        return raw_close
+
     def get_instrument_raw_carry_data(self, instrument_code):
         """
         Returns a pd. dataframe with the 4 columns PRICE, CARRY, PRICE_CONTRACT, CARRY_CONTRACT

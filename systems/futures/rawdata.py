@@ -31,7 +31,7 @@ class FuturesRawData(RawData):
         if you add another method to this you also need to add its blank dict here
         """
 
-        protected = ['get_raw_data']
+        protected = ['get_raw_data', 'get_raw_close']
         update_recalc(self, protected)
         
         setattr(self, "description", "futures")
@@ -277,7 +277,31 @@ class FuturesRawData(RawData):
 
         return raw_data
 
-    # get_raw_close?
+    def get_raw_close(self, instrument_code):
+        """
+        Get raw closing price
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: pd.DataFrame
+
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_close("CORN").tail(2)
+        2016-06-29 19:15:00    379.5
+        2016-06-29 19:20:00    379.5
+        """
+
+        def _get_raw_close(system, instrument_code, this_stage_notused):
+            instrprice = system.data.get_raw_close(
+                instrument_code)
+            return instrprice
+
+        raw_close = self.parent.calc_or_cache("raw_close_prices",
+                                         instrument_code,
+                                         _get_raw_close, self)
+
+        return raw_close
 
 if __name__ == '__main__':
     import doctest

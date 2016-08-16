@@ -261,6 +261,39 @@ class Account(SystemStage):
 
         return aligned_subsys_pos
 
+    # new function to get instrument relevant closing prices
+    def get_instrument_price(self, instrument_code):
+        """
+        Get the lowest TF instrument price used for the system
+
+        KEY INPUT
+
+        :param instrument_code:
+        :type str:
+
+        :returns: Tx1 pd.DataFrames
+
+        """
+        def _get_instrument_price(system, instrument_code, this_stage):
+            """
+            USE price TF appropriate for the particular instrument, comes from
+            system.accounts.get_subsystem_position (a random freq interval)
+            """
+            sspos = this_stage.get_subsystem_position(instrument_code)
+            # TODO: this only works for now since I know raw_price is 5min like sspos...
+            raw_price = system.rawdata.get_raw_close(instrument_code)
+
+            #raw_price = raw_price.reindex(sspos.index).ffill()
+            # TODO: NEED TO FIGURE OUT WHICH METHOD IS BETTER SINCE IT AFFECTS RETURNS
+            raw_price = raw_price.reindex(sspos.index)
+
+            return raw_price
+
+        instrument_price = self.parent.calc_or_cache(
+                'get_instrument_price', instrument_code,
+                _get_instrument_price, self)
+
+        return instrument_price
 
     def get_trading_rule_list(self, instrument_code):
         """
@@ -433,12 +466,15 @@ class Account(SystemStage):
         def _get_trading_rule_price(system, instrument_code, rule_variation_name, this_stage):
             # USE price TF appropriate for the particular rule
             data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
-            data_func = resolve_data_method(system, data_params)
-            raw_data = data_func(instrument_code)
-            if type(raw_data) is pd.DataFrame:
-                relevant_price = pd.Series(raw_data.close_price)
+            if 'get_daily_prices' in data_params:
+                relevant_price = None
             else:
-                relevant_price = raw_data
+                data_func = resolve_data_method(system, data_params)
+                raw_data = data_func(instrument_code)
+                if type(raw_data) is pd.DataFrame:
+                    relevant_price = pd.Series(raw_data.close_price)
+                else:
+                    relevant_price = raw_data
 
             return relevant_price
 
@@ -907,7 +943,9 @@ class Account(SystemStage):
 
             
             price = this_stage.get_daily_price(instrument_code)
-            positions = this_stage.get_aligned_subsystem_position(instrument_code)
+            relevant_price = this_stage.get_instrument_price(instrument_code)
+            #positions = this_stage.get_aligned_subsystem_position(instrument_code)
+            positions = this_stage.get_subsystem_position(instrument_code)
 
             fx = this_stage.get_fx_rate(instrument_code)
             
@@ -925,7 +963,7 @@ class Account(SystemStage):
             capital = this_stage.get_notional_capital()
             ann_risk_target = this_stage.get_ann_risk_target()
 
-            instr_pandl = accountCurve(price, positions = positions,
+            instr_pandl = accountCurve(price, positions = positions, relevant_price=relevant_price,
                                        delayfill = delayfill, roundpositions = roundpositions, 
                                 fx=fx, value_of_price_point=value_of_price_point, capital=capital,
                                  SR_cost=SR_cost,  cash_costs = cash_costs,

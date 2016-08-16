@@ -196,7 +196,7 @@ def pandl_with_data(price, relevant_price=None, trades=None, marktomarket=True, 
 
     instr_ccy_returns = cum_trades.shift(1)* price_returns * value_of_price_point
     
-    #instr_ccy_returns=instr_ccy_returns.cumsum().ffill().reindex(price.index).diff()
+    #original - instr_ccy_returns=instr_ccy_returns.cumsum().ffill().reindex(price.index).diff()
     #instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all')
     #if relevant_price is None:
     #    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().ffill().reindex(price.index).diff()
@@ -699,7 +699,7 @@ class accountCurve(accountCurveSingle):
                 base_ccy_returns, use_fx, value_of_price_point)=returns_data
                 
             ## always returns a time series
-            #TODO: NEED TO MAKE CALC_COSTS MINUTE COMPLIANT
+            #TODO: NEED TO MAKE CALC_COSTS MINUTE COMPLIANT - almost there...
             (costs_base_ccy, costs_instr_ccy)=calc_costs(returns_data, cash_costs, SR_cost, ann_risk)
             
             ## keep track of this
