@@ -283,8 +283,8 @@ class Account(SystemStage):
             # TODO: this only works for now since I know raw_price is 5min like sspos...
             raw_price = system.rawdata.get_raw_close(instrument_code)
 
-            #raw_price = raw_price.reindex(sspos.index).ffill()
-            # TODO: NEED TO FIGURE OUT WHICH METHOD IS BETTER SINCE IT AFFECTS RETURNS
+            # raw_price = raw_price.reindex(sspos.index).ffill()
+            # Do not ffill() (1) so that returns are not overstated (2) returns/cumsum() matches up with upstream
             raw_price = raw_price.reindex(sspos.index)
 
             return raw_price

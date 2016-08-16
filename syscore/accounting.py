@@ -699,7 +699,6 @@ class accountCurve(accountCurveSingle):
                 base_ccy_returns, use_fx, value_of_price_point)=returns_data
                 
             ## always returns a time series
-            #TODO: NEED TO MAKE CALC_COSTS MINUTE COMPLIANT - almost there...
             (costs_base_ccy, costs_instr_ccy)=calc_costs(returns_data, cash_costs, SR_cost, ann_risk)
             
             ## keep track of this
@@ -870,16 +869,17 @@ def calc_costs(returns_data, cash_costs, SR_cost, ann_risk):
 
     if SR_cost is not None:
         ## use SR_cost
-        ann_cost = -SR_cost*ann_risk
+        ann_cost = -SR_cost*ann_risk  # ann_risk is either minute or resampled 1B depending on if relevant_price or price is used
         
-        costs_instr_ccy = ann_cost/BUSINESS_DAYS_IN_YEAR
+        costs_instr_ccy = ann_cost/BUSINESS_DAYS_IN_YEAR  # Per Day, but can be on minute TF
+        costs_instr_ccy = costs_instr_ccy.reindex(use_fx.index).ffill()  # Let 's make sure it's per day
     
     elif cash_costs is not None:
         ## use cost per blocks
         
         (value_total_per_block, value_of_pertrade_commission, percentage_cost)=cash_costs
 
-        trades_in_blocks=trades_to_use.abs()
+        trades_in_blocks=trades_to_use.abs() # can be minute TF
         costs_blocks = - trades_in_blocks*value_total_per_block
 
         value_of_trades=trades_in_blocks * value_of_price_point
@@ -888,21 +888,23 @@ def calc_costs(returns_data, cash_costs, SR_cost, ann_risk):
         traded=trades_to_use[trades_to_use>0]
         
         if len(traded)==0:
-            costs_pertrade = pd.Series([0.0]*len(cum_trades.index), cum_trades.index)
+            costs_pertrade = pd.Series([0.0]*len(cum_trades.index), cum_trades.index)  # can be minute TF
         else:
-            costs_pertrade = pd.Series([value_of_pertrade_commission]*len(traded.index), traded.index)
-            costs_pertrade = costs_pertrade.reindex(trades_to_use.index)
+            costs_pertrade = pd.Series([value_of_pertrade_commission]*len(traded.index), traded.index)  # minute TF / truncated
+            costs_pertrade = costs_pertrade.reindex(trades_to_use.index)  # can be minute TF
 
         ## everything on the trades index, so can do this:s        
-        costs_instr_ccy = costs_blocks+costs_percentage+costs_pertrade
+        costs_instr_ccy = costs_blocks+costs_percentage+costs_pertrade  # can be minute TF
 
     else:
         ## set costs to zero
-        costs_instr_ccy=pd.Series([0.0]*len(use_fx), index=use_fx.index)
+        costs_instr_ccy=pd.Series([0.0]*len(use_fx), index=use_fx.index)  # resampled 1B TF
 
     ## fx is on master (price timestamp)
     ## costs_instr_ccy needs downsampling
-    costs_instr_ccy=costs_instr_ccy.cumsum().ffill().reindex(use_fx.index).diff()
+    # costs_instr_ccy=costs_instr_ccy.cumsum().ffill().reindex(use_fx.index).diff()
+    ## upgraded like pandl_with_data function to accomodate intra-day trades
+    costs_instr_ccy=costs_instr_ccy.cumsum().ffill().resample('1B').agg(np.sum).reindex(use_fx.index).diff()
     
     costs_base_ccy=costs_instr_ccy *  use_fx.ffill()
     costs_base_ccy[np.isnan(costs_base_ccy)]=0.0
@@ -945,6 +947,7 @@ def resolve_capital(ts_to_scale_to, capital=None, ann_risk_target=None):
     daily_risk_capital = base_capital * ann_risk_target / ROOT_BDAYS_INYEAR
 
     if type(base_capital) is float or type(base_capital) is int:
+        # if relevamt_price then minute TF; if price, then resampled 1B TF
         ts_capital=pd.Series([base_capital]*len(ts_to_scale_to), index=ts_to_scale_to.index)
         base_capital = float(base_capital)
     else:
