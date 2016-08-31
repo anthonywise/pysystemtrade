@@ -753,7 +753,8 @@ class accountCurve(accountCurveSingle):
 
         
         if weighted_flag:
-            use_weighting = weighting.reindex(base_ccy_returns.index).ffill() #TODO: weighting can be minute so may not line up correctly
+            # use_weighting = weighting.reindex(base_ccy_returns.index).ffill() #TODO: weighting can be minute so may not line up correctly
+            use_weighting = weighting.resample('1B').agg(np.mean).reindex(base_ccy_returns.index).ffill()  #may not really be necessary since weights unlikely to change
             if not apply_weight_to_costs_only:
                 ## only apply to gross returns if they aren't already weighted
                 base_ccy_returns = base_ccy_returns* use_weighting

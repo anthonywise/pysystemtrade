@@ -1150,6 +1150,7 @@ class Account(SystemStage):
                                instrument_code=instrument_code)
 
             price = this_stage.get_daily_price(instrument_code)
+            relevant_price = this_stage.get_instrument_price(instrument_code)
             positions = this_stage.get_buffered_position(instrument_code, roundpositions = roundpositions)
             fx = this_stage.get_fx_rate(instrument_code)
             value_of_price_point = this_stage.get_value_of_price_move(
@@ -1164,7 +1165,7 @@ class Account(SystemStage):
             (SR_cost, cash_costs)=this_stage.get_costs(instrument_code)
             
 
-            instr_pandl = accountCurve(price, positions = positions,
+            instr_pandl = accountCurve(price, positions = positions, relevant_price= relevant_price,
                                        delayfill = delayfill, roundpositions = roundpositions, 
                                 fx=fx, value_of_price_point=value_of_price_point, capital=capital,
                                 ann_risk_target = ann_risk_target,
