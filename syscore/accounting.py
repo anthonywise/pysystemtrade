@@ -204,7 +204,17 @@ def pandl_with_data(price, relevant_price=None, trades=None, marktomarket=True, 
     #    instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().ffill().reindex(relevant_price.index).diff()
 
     #instr_ccy_returns = instr_ccy_returns.resample('D').agg(np.sum).cumsum().dropna(how='all').ffill().reindex(price.index).diff()
-    instr_ccy_returns = instr_ccy_returns.cumsum().ffill().resample('1B').agg(np.sum).reindex(price.index).diff()
+
+    # below worked for daily but was funky for intra-day
+    # instr_ccy_returns = instr_ccy_returns.cumsum().ffill().resample('1B').agg(np.sum).reindex(price.index).diff()
+
+    drop = instr_ccy_returns.dropna(how='all')
+    cummin = drop.cumsum()
+    resamp = cummin.resample('1B').agg('last')
+    forwardfill = resamp.ffill()
+    reind = forwardfill.reindex(price.index)
+    instr_ccy_returns = reind.diff()
+    #instr_ccy_returns = instr_ccy_returns.dropna(how='all').cumsum().resample('1B').agg('last').ffill().reindex(price.index).diff()
     base_ccy_returns = instr_ccy_returns * use_fx
     
     return (cum_trades, trades_to_use, instr_ccy_returns,
@@ -276,7 +286,7 @@ def get_positions_from_forecasts(price, get_daily_returns_volatility, forecast,
     if daily_risk_capital is None:
         daily_risk_capital=DEFAULT_DAILY_CAPITAL
         
-    multiplier = daily_risk_capital * 1.0 * 1.0 / 10.0
+    multiplier = daily_risk_capital * 1.0 * 1.0 / 10.0  # TODO: Why divide by 10? bc of average absolute forecast?
 
     denominator = (value_of_price_point * get_daily_returns_volatility* use_fx)
     denominator = denominator.reindex(forecast.index, method='ffill')
@@ -753,8 +763,8 @@ class accountCurve(accountCurveSingle):
 
         
         if weighted_flag:
-            # use_weighting = weighting.reindex(base_ccy_returns.index).ffill() #TODO: weighting can be minute so may not line up correctly
-            use_weighting = weighting.resample('1B').agg(np.mean).reindex(base_ccy_returns.index).ffill()  #may not really be necessary since weights unlikely to change
+            # use_weighting = weighting.reindex(base_ccy_returns.index).ffill() # weighting can be minute so may not line up correctly
+            use_weighting = weighting.resample('1B').agg(np.mean).reindex(base_ccy_returns.index).ffill()  # may not really be necessary since weights unlikely to change
             if not apply_weight_to_costs_only:
                 ## only apply to gross returns if they aren't already weighted
                 base_ccy_returns = base_ccy_returns* use_weighting
@@ -905,7 +915,8 @@ def calc_costs(returns_data, cash_costs, SR_cost, ann_risk):
     ## costs_instr_ccy needs downsampling
     # costs_instr_ccy=costs_instr_ccy.cumsum().ffill().reindex(use_fx.index).diff()
     ## upgraded like pandl_with_data function to accomodate intra-day trades
-    costs_instr_ccy=costs_instr_ccy.cumsum().ffill().resample('1B').agg(np.sum).reindex(use_fx.index).diff()
+    # costs_instr_ccy=costs_instr_ccy.cumsum().ffill().resample('1B').agg(np.sum).reindex(use_fx.index).diff()
+    costs_instr_ccy = costs_instr_ccy.dropna(how='all').cumsum().resample('1B').agg('last').ffill().reindex(use_fx.index).diff()
     
     costs_base_ccy=costs_instr_ccy *  use_fx.ffill()
     costs_base_ccy[np.isnan(costs_base_ccy)]=0.0
@@ -933,7 +944,7 @@ def resolve_capital(ts_to_scale_to, capital=None, ann_risk_target=None):
     :type ann_risk_target: None or float
     
     :returns tuple: 3 tuple of Tx1 pd.Series / float, pd.Series, pd.Series or float
-    (capital, ann_risk, daily_risk_capital)
+    (base_capital, ann_risk, daily_risk_capital)
 
     """
     if capital is None:

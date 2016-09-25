@@ -759,7 +759,7 @@ class Account(SystemStage):
             percentage_cost=raw_costs['percentage_cost']
             value_of_pertrade_commission=raw_costs['value_of_pertrade_commission']
             
-            
+            # TODO: NEED TO USE RELEVANT PRICES AND VOLATILITY
             daily_vol=this_stage.get_daily_returns_volatility(instrument_code)
             daily_price=this_stage.get_daily_price(instrument_code) # Resampled 1B daily price
 
@@ -777,6 +777,7 @@ class Account(SystemStage):
             price_total=price_slippage+price_block_commission+price_percentage_cost+price_per_trade_cost # per contract
             
             avg_annual_vol = average_vol * ROOT_BDAYS_INYEAR
+            #avg_annual_vol = (average_vol / (264**.5)) * (67584**.5)  #Test: SCALing down vol to 5 min
             
             SR_cost = 2.0 * price_total / ( avg_annual_vol )
             
@@ -959,6 +960,8 @@ class Account(SystemStage):
             
             if SR_cost_per_turnover is not None:
                 SR_cost = self.subsystem_SR_costs(instrument_code, roundpositions)
+            else:
+                SR_cost = None
                 
             capital = this_stage.get_notional_capital()
             ann_risk_target = this_stage.get_ann_risk_target()
@@ -1488,7 +1491,7 @@ class Account(SystemStage):
                 system, NOTUSEDinstrument_code_ref, rule_variation_name, this_stage,
                 instrument_code_list):
 
-            # My average forecast is not "10", so this may need to change (i.e. make 1)
+            # My average forecast is not "10", so I have changed this (i.e. make 1)
             # average_forecast_for_turnover=system_defaults['average_absolute_forecast']
             average_forecast_for_turnover=self.parent.config.average_absolute_forecast
 
@@ -2034,6 +2037,7 @@ class Account(SystemStage):
                                instrument_code=instrument_code)
 
             price = this_stage.get_daily_price(instrument_code)
+            relevant_price = this_stage.get_instrument_price(instrument_code)
             positions = this_stage.get_buffered_position_with_multiplier(instrument_code, roundpositions = roundpositions)
             fx = this_stage.get_fx_rate(instrument_code)
             value_of_price_point = this_stage.get_value_of_price_move(
@@ -2049,7 +2053,7 @@ class Account(SystemStage):
             (SR_cost, cash_costs)=this_stage.get_costs(instrument_code)
             
 
-            instr_pandl = accountCurve(price, positions = positions,
+            instr_pandl = accountCurve(price, positions = positions, relevant_price = relevant_price,
                                        delayfill = delayfill, roundpositions = roundpositions, 
                                 fx=fx, value_of_price_point=value_of_price_point, capital=capital,
                                 ann_risk_target = ann_risk_target,

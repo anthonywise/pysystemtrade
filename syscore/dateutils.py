@@ -2,8 +2,14 @@
 Various routines to do with dates
 """
 import datetime
+import time
 import numpy as np
 import pandas as pd
+import yaml
+from syscore.fileutils import get_filename_for_package
+from syscore.pdutils import pd_readcsv
+
+from copy import copy
 
 from syscore.genutils import sign
 
@@ -56,6 +62,10 @@ def expiry_date(expiry_ident):
 
     elif isinstance(expiry_ident, datetime.datetime) or isinstance(expiry_ident, datetime.date):
         expiry_date = expiry_ident
+
+    elif isinstance(expiry_ident, pd.tslib.Timestamp):
+        # expiry_date = expiry_ident.to_datetime()
+        expiry_date = time.strftime("%Y%m", time.strptime(str(expiry_ident), "%Y-%m-%d %H:%M:%S"))
 
     else:
         raise Exception(
@@ -163,7 +173,43 @@ def generate_fitting_dates(data, date_method, rollyears=20):
 
     return periods
 
+def apply_contract_date(carry_row, instrument_code, data_path, contract_months):
+    if carry_row.index == "":
+        return np.nan
 
+    price_contract = copy(carry_row.index)
+
+    self.log.msg("Loading csv contract months")
+    contractmonthdata = pd.read_csv(contract_months)
+    contractmonthdata.index = contractmonthdata['Month']
+
+    filename = get_filename_for_package(data_path)
+    with open(filename) as file_to_parse:
+        dict_to_parse = yaml.load(file_to_parse)
+        instr_months = dict_to_parse[instrument_code]
+
+    price_contract = price_contract.to_datetime()
+    contract_month = contractmonthdata[price_contract.month]['Code']
+    contract_month = contract_month
+
+
+    if isinstance(price_contract, pd.tslib.Timestamp):
+    # expiry_date = expiry_ident.to_datetime()
+    expiry_date = time.strftime("%Y%m", time.strptime(str(expiry_ident), "%Y-%m-%d %H:%M:%S"))
+
+    else:
+        raise Exception(
+    "expiry_date needs to be a string with 4 or 6 digits, ")
+
+    expiry_date(carry_row.index)
+
+    ans = float((expiry_date(carry_row.CARRY_CONTRACT) -
+                 expiry_date(carry_row.PRICE_CONTRACT)).days)
+    if abs(ans) < floor_date_diff:
+        ans = sign(ans) * floor_date_diff
+    ans = ans / CALENDAR_DAYS_IN_YEAR
+
+    return ans
 
 if __name__ == '__main__':
     import doctest

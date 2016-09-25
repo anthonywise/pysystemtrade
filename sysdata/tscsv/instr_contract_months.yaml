@@ -1,0 +1,8 @@
+#YAML
+Instruments:
+    CORN:
+        - F,H,K,N,U,X,Z
+    US10:
+        - H,M,U,Z
+    SP500:
+        - H,M,U,Z

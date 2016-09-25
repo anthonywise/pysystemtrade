@@ -484,7 +484,7 @@ class PositionSizing(SystemStage):
             vol_scalar = this_stage.get_volatility_scalar(instrument_code)
             forecast = this_stage.get_combined_forecast(instrument_code)
 
-            vol_scalar = vol_scalar.reindex(forecast.index).ffill()
+            vol_scalar = vol_scalar.reindex(forecast.index).ffill() / (264**.5)
 
             subsystem_position =  vol_scalar *  forecast / avg_abs_forecast
 
