@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import yaml
 from syscore.fileutils import get_filename_for_package
-from syscore.pdutils import pd_readcsv
+# from syscore.pdutils import pd_readcsv
 
 from copy import copy
 
@@ -173,15 +173,15 @@ def generate_fitting_dates(data, date_method, rollyears=20):
 
     return periods
 
-def apply_contract_date(carry_row, instrument_code, data_path, contract_months):
+'''
+def apply_contract_date(carry_row, instrument_code, instrcontract_months, contract_months):
     if carry_row.index == "":
         return np.nan
 
     price_contract = copy(carry_row.index)
 
     self.log.msg("Loading csv contract months")
-    contractmonthdata = pd.read_csv(contract_months)
-    contractmonthdata.index = contractmonthdata['Month']
+    contractmonthdata = pd.read_csv(contract_months).set_index('Month')
 
     filename = get_filename_for_package(data_path)
     with open(filename) as file_to_parse:
@@ -194,8 +194,8 @@ def apply_contract_date(carry_row, instrument_code, data_path, contract_months):
 
 
     if isinstance(price_contract, pd.tslib.Timestamp):
-    # expiry_date = expiry_ident.to_datetime()
-    expiry_date = time.strftime("%Y%m", time.strptime(str(expiry_ident), "%Y-%m-%d %H:%M:%S"))
+        # expiry_date = expiry_ident.to_datetime()
+    # expiry_date = time.strftime("%Y%m", time.strptime(str(expiry_ident), "%Y-%m-%d %H:%M:%S"))
 
     else:
         raise Exception(
@@ -210,6 +210,7 @@ def apply_contract_date(carry_row, instrument_code, data_path, contract_months):
     ans = ans / CALENDAR_DAYS_IN_YEAR
 
     return ans
+'''
 
 if __name__ == '__main__':
     import doctest

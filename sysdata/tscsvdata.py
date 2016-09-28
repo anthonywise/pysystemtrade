@@ -8,13 +8,16 @@ import os
 
 import pandas as pd
 import numpy as np
+import yaml
 
 from syscore.fileutils import get_pathname_for_package
+from syscore.fileutils import get_filename_for_package
 from syscore.pdutils import pd_readcsv
 from syscore.genutils import str_of_int
 
 from sysdata.csvdata import csvFuturesData
 
+from collections import deque
 from copy import copy, deepcopy
 
 """
@@ -63,7 +66,7 @@ class tscsvFuturesData(csvFuturesData):
         Here it's a directory
         """
         setattr(self, "_tsdatapath", tsdatapath)
-        setattr(self., "_tsdatapathyaml", tsdatapathyaml)
+        setattr(self, "_tsdatapathyaml", tsdatapathyaml)
 
     def get_raw_price(self, instrument_code):
         """
@@ -222,20 +225,64 @@ class tscsvFuturesData(csvFuturesData):
 
         instrcarrydata = instrcarrydata.groupby(level=0).last()
 
-        datapath = self._tsdatapathyaml + ".instr_contract_months.yaml"
-
-        filename1 = os.path.join(
+        '''
+        self.log.msg("Loading csv contract months")
+        contract_months_path = os.path.join(
             self._tsdatapath, "contract_months.csv")
+        contract_months_data = pd.read_csv(contract_months_path).set_index('Month')
+        '''
 
-        instrcarrydata['PRICE_CONTRACT' == np.nan] = apply_contract_date(instrcarrydata, instrument_code, datapath, filename1)
+        self.log.msg("Loading yaml instr contract months")
+        instrcontract_months_path = self._tsdatapathyaml + ".instr_contract_months.yaml"
+        instrcontract_months_name = get_filename_for_package(instrcontract_months_path)
+        with open(instrcontract_months_name) as file_to_parse:
+            instr_data = yaml.load(file_to_parse)
+            instr_months = instr_data[instrument_code]['contract_dict']
+            year_offset = instr_data[instrument_code]['contract_year_offset']
+            carry_months = instr_data[instrument_code]['carry_dict']
+            carry_offset = instr_data[instrument_code]['carry_year_offset']
 
-        instrcarrydata['CARRY_CONTRACT'] = apply_carry_date(instrcarrydata, instrument_code)
+        # months_traded = deque(instr_months)
+        # if instrcarrydata.PRICE_CONTRACT == "": TODO: Leave TS Script empty or fill with NaN?
+        # instrcarrydata['PRICE_CONTRACT'] = instrcarrydata.index.to_datetime()
+        # further steps
 
-        """
+        # Create new DF to calculate Contract and Carry Dates
+        year_month = pd.DataFrame(instrcarrydata.index.strftime('%Y')).set_index(instrcarrydata.index)
+        year_month['Month'] = instrcarrydata.index.strftime('%m')
+        year_month.columns = ['Year', 'Month']
+        year_for_price = copy(year_month['Year'])
+        # Lookup Contract month and insert
+        year_month['Contract_Month'] = year_month['Month'].map(instr_months).ffill()
+        # Create new series with year offset, then add to the year for correct Contract_Year
+        contract_year_offset = pd.Series(year_month['Month'].map(year_offset)).ffill()
+        year_month['Contract_Year'] = (pd.to_numeric(year_for_price[0], errors='coerce') + contract_year_offset).ffill()
+        # Convert Contract_Year to str, then concat with Contract_Month; make new column
+        year_month['Contract_Year'] = year_month['Contract_Year'].apply(str_of_int)
+        year_month['Contract'] = year_month['Contract_Year'].map(str) + year_month['Contract_Month']
+
+        # Same steps for Carry
+        year_for_carry = copy(year_month['Year'])
+        # Lookup Carry month and insert
+        year_month['Carry_Month'] = year_month['Month'].map(carry_months).ffill()
+        # Create new series with carry year offset, then add to the year for correct Carry_Year
+        carry_year_offset = pd.Series(year_month['Month'].map(carry_offset)).ffill()
+        year_month['Carry_Year'] = (pd.to_numeric(year_for_carry[0], errors='coerce') + carry_year_offset).ffill
+        # Convert Carry_Year to str, then concat with Contract_Month; make new column
+        year_month['Carry_Year'] = year_month['Carry_Year'].apply(str_of_int)
+        year_month['Carry'] = year_month['Carry_Year'].map(str) + year_month['Carry_Month']
+
+        # Add to Contract and Carry dates to original DF
+        instrcarrydata['PRICE_CONTRACT'] = year_month['Contract'].reindex(instrcarrydata.index)
+        instrcarrydata['CARRY_CONTRACT'] = year_month['Carry'].reindex(instrcarrydata.index)
+
+        # TODO: Del old DFs and Series?
+
+        # Make sure Price and Carry dates are strings as needed for calcs in RawData Stage
         instrcarrydata.CARRY_CONTRACT = instrcarrydata.CARRY_CONTRACT.apply(
             str_of_int)
         instrcarrydata.PRICE_CONTRACT = instrcarrydata.PRICE_CONTRACT.apply(
             str_of_int)
-        """
+
 
         return instrcarrydata
