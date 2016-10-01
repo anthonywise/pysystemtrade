@@ -251,23 +251,23 @@ class tscsvFuturesData(csvFuturesData):
         year_month = pd.DataFrame(instrcarrydata.index.strftime('%Y')).set_index(instrcarrydata.index)
         year_month['Month'] = instrcarrydata.index.strftime('%m')
         year_month.columns = ['Year', 'Month']
-        year_for_price = copy(year_month['Year'])
+        ## year_for_price = copy(year_month['Year'])
         # Lookup Contract month and insert
         year_month['Contract_Month'] = year_month['Month'].map(instr_months).ffill()
         # Create new series with year offset, then add to the year for correct Contract_Year
         contract_year_offset = pd.Series(year_month['Month'].map(year_offset)).ffill()
-        year_month['Contract_Year'] = (pd.to_numeric(year_for_price[0], errors='coerce') + contract_year_offset).ffill()
+        year_month['Contract_Year'] = (pd.to_numeric(year_month['Year'], errors='coerce') + contract_year_offset).ffill()
         # Convert Contract_Year to str, then concat with Contract_Month; make new column
         year_month['Contract_Year'] = year_month['Contract_Year'].apply(str_of_int)
         year_month['Contract'] = year_month['Contract_Year'].map(str) + year_month['Contract_Month']
 
         # Same steps for Carry
-        year_for_carry = copy(year_month['Year'])
+        ## year_for_carry = copy(year_month['Year'])
         # Lookup Carry month and insert
         year_month['Carry_Month'] = year_month['Month'].map(carry_months).ffill()
         # Create new series with carry year offset, then add to the year for correct Carry_Year
         carry_year_offset = pd.Series(year_month['Month'].map(carry_offset)).ffill()
-        year_month['Carry_Year'] = (pd.to_numeric(year_for_carry[0], errors='coerce') + carry_year_offset).ffill
+        year_month['Carry_Year'] = (pd.to_numeric(year_month['Year'], errors='coerce') + carry_year_offset).ffill()
         # Convert Carry_Year to str, then concat with Contract_Month; make new column
         year_month['Carry_Year'] = year_month['Carry_Year'].apply(str_of_int)
         year_month['Carry'] = year_month['Carry_Year'].map(str) + year_month['Carry_Month']
@@ -276,7 +276,7 @@ class tscsvFuturesData(csvFuturesData):
         instrcarrydata['PRICE_CONTRACT'] = year_month['Contract'].reindex(instrcarrydata.index)
         instrcarrydata['CARRY_CONTRACT'] = year_month['Carry'].reindex(instrcarrydata.index)
 
-        # TODO: Del old DFs and Series?
+        del year_month, contract_year_offset, carry_year_offset
 
         # Make sure Price and Carry dates are strings as needed for calcs in RawData Stage
         instrcarrydata.CARRY_CONTRACT = instrcarrydata.CARRY_CONTRACT.apply(
