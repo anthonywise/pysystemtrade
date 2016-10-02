@@ -9,6 +9,8 @@ import os
 import pandas as pd
 import numpy as np
 import yaml
+from datetime import datetime, timedelta
+import time
 
 from syscore.fileutils import get_pathname_for_package
 from syscore.fileutils import get_filename_for_package
@@ -141,10 +143,24 @@ class tscsvFuturesData(csvFuturesData):
 
         # Read from .csv
         self.log.msg("Loading TradeStation daily data for %s" % instrument_code, instrument_code=instrument_code)
-        #filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
-        #instrpricedata = pd_readcsv(filename)
-        #instrpricedata.columns = ["close_price", "open_price", "high_price", "low_price", "volume"]
+
         instrdailydata = copy(self.get_raw_data(instrument_code))
+        instrdailydata.index = pd.DatetimeIndex(instrdailydata.index) # make sure it's a Datetime index
+
+        # Get daily start and end times
+        # probably keep as str
+        starttime = datetime.strptime(self.get_all_trading_hours().loc[instrument_code][0], '%H:%M:%S')
+        endtime = datetime.strptime(self.get_all_trading_hours().loc[instrument_code][1], '$H%M:%S')
+
+        timeshift = instrdailydata.between_time(starttime, '23:59:59', include_start=True, include_end=True)
+        timeshift.index = timeshift.index + pd.DateOffset(hours=8, minutes=30)
+        regular = instrdailydata.between_time('23:59:59', endtime, include_start=False, include_end=True)
+        new = pd.merge(timeshift, regular, left_index=True, right_index=False, how='inner',
+                       on=['close_price', 'open_price', 'high_price', 'low_price', 'volume'])
+        result=new.groupby(new.index.date).agg({'close_price': "last", 'open_price': "first", 'high_price': np.max,
+                                          'low_price': np.min, 'volume': np.sum})
+
+        # proxy = instrdailydata.index + pd.DateOffset(hours=time_shift)
         #instrdailydata.groupby(level=0).last()
         dailydata = instrdailydata.resample('D').agg({'close_price': "last", 'open_price': "first", 'high_price': np.max,
                                           'low_price': np.min, 'volume': np.sum})
@@ -170,7 +186,7 @@ class tscsvFuturesData(csvFuturesData):
         instrprice = pd.Series(instrpricedataframe.close_price)
         return instrprice
 
-    def _get_all_trading_hours(self):
+    def get_all_trading_hours(self):
         """
         Get a data frame of trading hours for each instrument
 
@@ -189,13 +205,15 @@ class tscsvFuturesData(csvFuturesData):
 
         filename = os.path.join(self._tsdatapath, "instrument_trading_hours.csv")
         try:
-            instr_trading_hours = pd.read_csv(filename)
-            instr_trading_hours.index = instr_trading_hours.Instrument
+            instr_trading_hours = pd.read_csv(filename).set_index('Instrument')
+            #instr_trading_hours.index = instr_trading_hours.Instrument
 
             return instr_trading_hours
         except OSError:
             self.log.warn("Instrument trading hours file not found %s" % filename)
             return None
+
+
 
     def get_instrument_raw_carry_data(self, instrument_code):
         """
