@@ -148,12 +148,21 @@ class tscsvFuturesData(csvFuturesData):
         instrdailydata.index = pd.DatetimeIndex(instrdailydata.index) # make sure it's a Datetime index
 
         # Get daily start and end times
-        # probably keep as str
-        starttime = datetime.strptime(self.get_all_trading_hours().loc[instrument_code][0], '%H:%M:%S')
-        endtime = datetime.strptime(self.get_all_trading_hours().loc[instrument_code][1], '$H%M:%S')
+        starttime = self.get_all_trading_hours().loc[instrument_code][0]
+        starttimedate = datetime.strptime(starttime, '%H:%M')
+        # endtime = self.get_all_trading_hours().loc[instrument_code][1]  # Not needed
 
-        timeshift = instrdailydata.between_time(starttime, '23:59:59', include_start=True, include_end=True)
-        timeshift.index = timeshift.index + pd.DateOffset(hours=8, minutes=30)
+        # Get amount of hours needed to add to time shift
+        nextday = datetime(1900, 1, 2, 0, 0)
+        shift_hours = (nextday - starttimedate).seconds / 3600  # Seconds / Hour
+        instrdailydata.index = instrdailydata.index + pd.DateOffset(hours=shift_hours)
+
+        # Bin the data to Daily Bars
+        dailydata = instrdailydata.groupby(instrdailydata.index.date).agg({'close_price': "last",
+                                                            'open_price': "first",'high_price': np.max,
+                                                            'low_price': np.min,'volume': np.sum})
+
+        '''
         regular = instrdailydata.between_time('23:59:59', endtime, include_start=False, include_end=True)
         new = pd.merge(timeshift, regular, left_index=True, right_index=False, how='inner',
                        on=['close_price', 'open_price', 'high_price', 'low_price', 'volume'])
@@ -165,6 +174,8 @@ class tscsvFuturesData(csvFuturesData):
         dailydata = instrdailydata.resample('D').agg({'close_price': "last", 'open_price': "first", 'high_price': np.max,
                                           'low_price': np.min, 'volume': np.sum})
         #dailydata = instrdailydata.resample('D').ohlc()
+        '''
+
         dailydata = dailydata.dropna(how='all')
         return dailydata
 
