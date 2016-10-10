@@ -153,8 +153,12 @@ class tscsvFuturesData(csvFuturesData):
         # endtime = self.get_all_trading_hours().loc[instrument_code][1]  # Not needed
 
         # Get amount of hours needed to add to time shift
+        '''
+        TODO: May be a more efficient way to the do the following
+        (see http://pandas.pydata.org/pandas-docs/stable/timeseries.html / Parametric Offsets)
+        '''
         nextday = datetime(1900, 1, 2, 0, 0)
-        shift_hours = (nextday - starttimedate).seconds / 3600  # Seconds / Hour
+        shift_hours = (nextday - starttimedate).seconds / 3600.0  # Seconds / Hour
         instrdailydata.index = instrdailydata.index + pd.DateOffset(hours=shift_hours)
 
         # Bin the data to Daily Bars
@@ -175,7 +179,7 @@ class tscsvFuturesData(csvFuturesData):
                                           'low_price': np.min, 'volume': np.sum})
         #dailydata = instrdailydata.resample('D').ohlc()
         '''
-
+        dailydata.index = pd.DatetimeIndex(dailydata.index) # make sure it's a Datetime index
         dailydata = dailydata.dropna(how='all')
         return dailydata
 
@@ -223,8 +227,6 @@ class tscsvFuturesData(csvFuturesData):
         except OSError:
             self.log.warn("Instrument trading hours file not found %s" % filename)
             return None
-
-
 
     def get_instrument_raw_carry_data(self, instrument_code):
         """
@@ -315,3 +317,175 @@ class tscsvFuturesData(csvFuturesData):
 
 
         return instrcarrydata
+
+    def get_30min_data(self, instrument_code):
+        """
+            Get 30min data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        thirty_min = rawdata.resample('30T', label='right', closed='right').agg({'close_price': "last",
+                                                            'open_price': "first",'high_price': np.max,
+                                                            'low_price': np.min,'volume': np.sum})
+        thirty_min = thirty_min.dropna(how='all')
+        return thirty_min
+
+    def get_45min_data(self, instrument_code):
+        """
+            Get 45min data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        fortyfive_min = rawdata.resample('45T', label='right', closed='right').agg({'close_price': "last",
+                                                                                 'open_price': "first",
+                                                                                 'high_price': np.max,
+                                                                                 'low_price': np.min, 'volume': np.sum})
+        fortyfive_min = fortyfive_min.dropna(how='all')
+        return fortyfive_min
+
+    def get_60min_data(self, instrument_code):
+        """
+            Get 60min data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        sixty_min = rawdata.resample('60T', label='right', closed='right').agg({'close_price': "last",
+                                                                                    'open_price': "first",
+                                                                                    'high_price': np.max,
+                                                                                    'low_price': np.min,
+                                                                                    'volume': np.sum})
+        sixty_min = sixty_min.dropna(how='all')
+        return sixty_min
+
+    def get_90min_data(self, instrument_code):
+        """
+            Get 90min data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        ninety_min = rawdata.resample('90T', label='right', closed='right').agg({'close_price': "last",
+                                                                                    'open_price': "first",
+                                                                                    'high_price': np.max,
+                                                                                    'low_price': np.min,
+                                                                                    'volume': np.sum})
+        ninety_min = ninety_min.dropna(how='all')
+        return ninety_min
+
+    def get_120min_data(self, instrument_code):
+        """
+            Get 120min data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        onehundredtwenty_min = rawdata.resample('120T', label='right', closed='right').agg({'close_price': "last",
+                                                                                    'open_price': "first",
+                                                                                    'high_price': np.max,
+                                                                                    'low_price': np.min,
+                                                                                    'volume': np.sum})
+        onehundredtwenty_min = onehundredtwenty_min.dropna(how='all')
+        return onehundredtwenty_min
+
+    def get_weekly_data(self, instrument_code):
+        """
+            Get weekly data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        weekly = rawdata.resample('W-FRI', label='right', closed='right').agg({'close_price': "last",
+                                                                                            'open_price': "first",
+                                                                                            'high_price': np.max,
+                                                                                            'low_price': np.min,
+                                                                                            'volume': np.sum})
+        weekly = weekly.dropna(how='all')
+        return weekly
+
+    def get_monthly_data(self, instrument_code):
+        """
+            Get weekly data from raw instrument data
+
+            :param instrument_code: instrument to get data for
+            :type instrument_code: str
+
+            :returns: pd.DataFrame
+
+            >>> data=tscsvFuturesData("sysdata.tests")
+            >>> data.get_raw_data("CORN").tail(2)
+                        close_price  open_price  high_price  low_price  volume
+            2016-06-09        426.5      430.25      430.25     423.25  262525
+            2016-06-10        423.0      426.50      437.00     420.00  270454
+            """
+        rawdata = copy(self.get_raw_data(instrument_code))
+        rawdata.index = pd.DatetimeIndex(rawdata.index)  # make sure it's a Datetime index
+        monthly = rawdata.resample('BM', label='right', closed='right').agg({'close_price': "last",
+                                                                               'open_price': "first",
+                                                                               'high_price': np.max,
+                                                                               'low_price': np.min,
+                                                                               'volume': np.sum})
+        monthly = monthly.dropna(how='all')
+        return monthly

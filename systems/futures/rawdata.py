@@ -31,7 +31,9 @@ class FuturesRawData(RawData):
         if you add another method to this you also need to add its blank dict here
         """
 
-        protected = ['get_raw_data', 'get_raw_close']
+        protected = ['get_raw_data', 'get_raw_close', 'get_daily_data', 'get_30min_data', 'get_45min_data',
+                     'get_60min_data', 'get_90min_data', 'get_120min_data', 'get_weekly_data',
+                     'get_monthly_data']
         update_recalc(self, protected)
         
         setattr(self, "description", "futures")
@@ -302,6 +304,294 @@ class FuturesRawData(RawData):
                                          _get_raw_close, self)
 
         return raw_close
+
+    def get_daily_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for daily data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_daily_data(system, instrument_code, this_stage_notused):
+            instrdailydata = system.data.get_raw_daily_data(
+                instrument_code)
+            return instrdailydata
+
+        daily_data = self.parent.calc_or_cache("daily_data_prices",
+                                             instrument_code,
+                                             _get_daily_data, self)
+
+        return daily_data
+
+    def get_30min_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for 30min data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_30min_data(system, instrument_code, this_stage_notused):
+            thirtymin_data = system.data.get_30min_data(
+                instrument_code)
+            return thirtymin_data
+
+        thirty_min_data = self.parent.calc_or_cache("30min_data_prices",
+                                               instrument_code,
+                                               _get_30min_data, self)
+
+        return thirty_min_data
+
+    def get_45min_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for 45min data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_45min_data(system, instrument_code, this_stage_notused):
+            fortyfivemin_data = system.data.get_45min_data(
+                instrument_code)
+            return fortyfivemin_data
+
+        forty_five_min_data = self.parent.calc_or_cache("45min_data_prices",
+                                                    instrument_code,
+                                                    _get_45min_data, self)
+
+        return forty_five_min_data
+
+    def get_60min_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for 60min data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_60min_data(system, instrument_code, this_stage_notused):
+            sixtymin_data = system.data.get_60min_data(
+                instrument_code)
+            return sixtymin_data
+
+        sixty_min_data = self.parent.calc_or_cache("60min_data_prices",
+                                                    instrument_code,
+                                                    _get_60min_data, self)
+
+        return sixty_min_data
+
+    def get_90min_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for 90min data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_90min_data(system, instrument_code, this_stage_notused):
+            ninetymin_data = system.data.get_90min_data(
+                instrument_code)
+            return ninetymin_data
+
+        ninety_min_data = self.parent.calc_or_cache("90min_data_prices",
+                                                    instrument_code,
+                                                    _get_90min_data, self)
+
+        return ninety_min_data
+
+    def get_120min_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for 120min data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_120min_data(system, instrument_code, this_stage_notused):
+            onehundredtwentymin_data = system.data.get_120min_data(
+                instrument_code)
+            return onehundredtwentymin_data
+
+        onehundredtwenty_min_data = self.parent.calc_or_cache("120min_data_prices",
+                                                    instrument_code,
+                                                    _get_120min_data, self)
+
+        return onehundredtwenty_min_data
+
+    def get_weekly_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for weekly data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_weekly_data(system, instrument_code, this_stage_notused):
+            weeklydata = system.data.get_weekly_data(
+                instrument_code)
+            return weeklydata
+
+        weekly_data = self.parent.calc_or_cache("weekly_data_prices",
+                                                    instrument_code,
+                                                    _get_weekly_data, self)
+
+        return weekly_data
+
+    def get_monthly_data(self, instrument_code):
+        """
+        Returns the 4 columns close_price  open_price  high_price  low_price  volume
+        for monthly data
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: Tx4 pd.DataFrame
+
+        KEY INPUT
+
+
+        >>> from systems.provided.futures_chapter15.basesystem import futures_system
+        >>> from sysdata.tscsvdata import tscsvFuturesData
+        >>> mydata=tscsvFuturesData()
+        >>> mysystem=futures_system(data=mydata)
+        >>> mysystem.rawdata.get_raw_data("CORN").head(3)
+        >>> system.rawdata.get_instrument_raw_carry_data("EDOLLAR").tail(2)
+                    close_price  open_price  high_price  low_price  volume
+        1996-06-12       927.00      919.50      928.50     914.50  111260
+        1996-06-13       926.25      927.00      929.50     924.00   97465
+        1996-06-14       914.25      925.50      925.50     914.25  113595
+        """
+
+        def _get_monthly_data(system, instrument_code, this_stage_notused):
+            monthlydata = system.data.get_monthly_data(
+                instrument_code)
+            return monthlydata
+
+        monthly_data = self.parent.calc_or_cache("monthly_data_prices",
+                                                instrument_code,
+                                                _get_monthly_data, self)
+
+        return monthly_data
 
 if __name__ == '__main__':
     import doctest
