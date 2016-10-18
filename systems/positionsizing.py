@@ -75,6 +75,18 @@ class PositionSizing(SystemStage):
 
         return self.parent.combForecast.get_combined_forecast(instrument_code)
 
+    def get_instrument_volatility_denominator(self, instrument_code):
+        """
+        Get the instrument specific denominator to divide volatility appropriate
+         for instrument from previous module
+        :param instrument_code: instrument to get denominator for
+        :type instrument_code: str
+
+        :return: float
+        """
+        return self.parent.combForecast.instrument_volatility_denominator(
+            instrument_code, rule_variation_list=None)
+
     def get_price_volatility(self, instrument_code):
         """
         Get the daily % volatility; If a rawdata stage exists from there; otherwise work it out
@@ -441,6 +453,30 @@ class PositionSizing(SystemStage):
             'get_volatility_scalar', instrument_code, _get_volatility_scalar, self)
         return vol_scalar
 
+    def get_instrument_volatility_scalar(self, instrument_code):
+        """
+
+        :param instrument_code:
+        :return:
+        """
+        def _get_instrument_volatility_scalar(system, instrument_code, this_stage):
+            this_stage.log.msg("Calculating instrument volatility scalar for %s" %
+                               instrument_code, instrument_code=instrument_code)
+
+            daily_vol_scalar = this_stage.get_volatility_scalar(
+                instrument_code)
+
+            denominator = this_stage.get_instrument_volatility_denominator(
+                instrument_code)
+
+            ins_vol_scalar = daily_vol_scalar / denominator
+
+            return ins_vol_scalar
+
+        ins_vol_scalar = self.parent.calc_or_cache(
+            'get_instrument_volatility_scalar', instrument_code, _get_instrument_volatility_scalar,
+            self)
+        return ins_vol_scalar
 
     def get_subsystem_position(self, instrument_code):
         """
@@ -476,15 +512,17 @@ class PositionSizing(SystemStage):
                                instrument_code=instrument_code)
 
             """
-            We don't allow this to be changed in config
+            We don't allow this to be changed in config [Rob]
+            However, I have to work with Binary Systems
             """
-            # TODO: Why not? Could change this to 1.0
-            avg_abs_forecast = system_defaults['average_absolute_forecast']
+            # avg_abs_forecast = system_defaults['average_absolute_forecast']
+            avg_abs_forecast = self.parent.config.average_absolute_forecast
 
-            vol_scalar = this_stage.get_volatility_scalar(instrument_code)
+            # vol_scalar = this_stage.get_volatility_scalar(instrument_code)
+            vol_scalar = this_stage.get_instrument_volatility_scalar(instrument_code)
             forecast = this_stage.get_combined_forecast(instrument_code)
 
-            vol_scalar = vol_scalar.reindex(forecast.index).ffill() / (264**.5)
+            vol_scalar = vol_scalar.reindex(forecast.index).ffill()
 
             subsystem_position =  vol_scalar *  forecast / avg_abs_forecast
 

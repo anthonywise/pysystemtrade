@@ -1,10 +1,14 @@
 import pandas as pd
+from pandas import Timedelta
 from copy import copy
 
 from syscore.accounting import decompose_group_pandl
 from syscore.genutils import str2Bool
 from syscore.pdutils import  fix_weights_vs_pdm, apply_cap
 from syscore.objects import resolve_function, update_recalc
+from syscore.dateutils import (ROOT_FIFTEEN_IN_DAY, ROOT_THIRTY_IN_DAY, ROOT_FOURTYFIVE_IN_DAY,
+                               ROOT_SIXTY_IN_DAY, ROOT_NINETY_IN_DAY, ROOT_ONETWENTY_IN_DAY,
+                               ROOT_WEEKS_IN_DAY, ROOT_MONTHS_IN_DAY)
 
 from systems.defaults import system_defaults
 from systems.stage import SystemStage
@@ -69,7 +73,7 @@ class ForecastCombineFixed(SystemStage):
         """
 
         protected = ['get_forecast_weights', 'get_raw_forecast_weights',
-                     'get_forecast_diversification_multiplier']
+                     'get_forecast_diversification_multiplier', 'instrument_volatility_denominator']
         setattr(self, "_protected", protected)
 
         setattr(self, "name", "combForecast")
@@ -537,6 +541,68 @@ class ForecastCombineFixed(SystemStage):
         combined_forecast = self.parent.calc_or_cache(
             'get_combined_forecast', instrument_code, _get_combined_forecast, self)
         return combined_forecast
+
+    def instrument_volatility_denominator(self, instrument_code, rule_variation_list=None):
+        """
+        get the lowest timeframe for the system in order to adjust the volatility scalar
+        in the position sizing module
+        :param instrument_code:
+        :return: denominator (float)
+        """
+        def _ins_volatility_denominator(system, instrument_code, this_stage, rule_variation_list):
+            this_stage.log.msg("Calculating instrument volatility denominator for %s" % (instrument_code),
+                               instrument_code=instrument_code)
+            if rule_variation_list is None:
+                rule_variation_list = this_stage.get_trading_rule_list(instrument_code)
+
+            #TODO: stop the loop when 30min timeframe comes up to save resources
+            frequencies = [
+                this_stage.get_capped_forecast(instrument_code, rule_variation_name).index[1] -
+                this_stage.get_capped_forecast(instrument_code, rule_variation_name).index[0]
+                for rule_variation_name in rule_variation_list]
+
+            if min(frequencies) == Timedelta(minutes=15):
+                min_time_delta = ROOT_FIFTEEN_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=30):
+                min_time_delta = ROOT_THIRTY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=45):
+                min_time_delta = ROOT_FOURTYFIVE_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=60):
+                min_time_delta = ROOT_SIXTY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=90):
+                min_time_delta = ROOT_NINETY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=120):
+                min_time_delta = ROOT_ONETWENTY_IN_DAY
+            elif min(frequencies) == Timedelta(days=1):
+                min_time_delta = 1.0
+            elif min(frequencies) == Timedelta(weekss=1):
+                min_time_delta = ROOT_WEEKS_IN_DAY
+            elif min(frequencies) < Timedelta(days=34):
+                min_time_delta = ROOT_MONTHS_IN_DAY
+            else:
+                warn_msg = "WARNING: Minimum timeframe not found for %s - Daily Volatility will be used" % (
+                instrument_code)
+
+                this_stage.log.warn(warn_msg, instrument_code=instrument_code)
+                min_time_delta = 1.0
+
+            #TODO: maybe add this to elif to "infer" the timeframe
+            '''
+            combined_index = pd.Series(this_stage.get_combined_forecast(instrument_code).index)
+            time_deltas = combined_index - combined_index.shift()
+            min_time_delta = time_deltas.min()
+
+            if min_time_delta < pd.Timedelta(days=0,minutes=30, seconds=0):
+                min_time_delta = pd.Timedelta(days=0,minutes=30, seconds=0)
+            '''
+
+            return min_time_delta
+
+        minimum_time_delta = self.parent.calc_or_cache(
+            'get_minimum_time_delta', instrument_code, _ins_volatility_denominator, self,
+            rule_variation_list)
+
+        return minimum_time_delta
 
 
 class ForecastCombineEstimated(ForecastCombineFixed):
@@ -1099,7 +1165,68 @@ class ForecastCombineEstimated(ForecastCombineFixed):
                 
         return raw_forecast_weights
 
+    def instrument_volatility_denominator(self, instrument_code, rule_variation_list=None):
+        """
+        get the lowest timeframe for the system in order to adjust the volatility scalar
+        in the position sizing module
+        :param instrument_code:
+        :return: denominator (float)
+        """
 
+        def _ins_volatility_denominator(system, instrument_code, this_stage, rule_variation_list):
+            this_stage.log.msg("Calculating instrument volatility denominator for %s" % (instrument_code),
+                                instrument_code=instrument_code)
+            if rule_variation_list is None:
+                rule_variation_list = this_stage.apply_cost_weighting(instrument_code)
+
+            # TODO: stop the loop when 30min timeframe comes up to save resources
+            frequencies = [
+                this_stage.get_capped_forecast(instrument_code, rule_variation_name).index[1] -
+                this_stage.get_capped_forecast(instrument_code, rule_variation_name).index[0]
+                for rule_variation_name in rule_variation_list]
+
+            if min(frequencies) == Timedelta(minutes=15):
+                min_time_delta = ROOT_FIFTEEN_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=30):
+                min_time_delta = ROOT_THIRTY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=45):
+                min_time_delta = ROOT_FOURTYFIVE_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=60):
+                min_time_delta = ROOT_SIXTY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=90):
+                min_time_delta = ROOT_NINETY_IN_DAY
+            elif min(frequencies) == Timedelta(minutes=120):
+                min_time_delta = ROOT_ONETWENTY_IN_DAY
+            elif min(frequencies) == Timedelta(days=1):
+                min_time_delta = 1.0
+            elif min(frequencies) == Timedelta(weekss=1):
+                min_time_delta = ROOT_WEEKS_IN_DAY
+            elif min(frequencies) < Timedelta(days=34):
+                min_time_delta = ROOT_MONTHS_IN_DAY
+            else:
+                warn_msg = "WARNING: Minimum timeframe not found for %s - Daily Volatility will be used" % (
+                    instrument_code)
+
+                this_stage.log.warn(warn_msg, instrument_code=instrument_code)
+                min_time_delta = 1.0
+
+            # TODO: maybe add this to elif to "infer" the timeframe
+            '''
+            combined_index = pd.Series(this_stage.get_combined_forecast(instrument_code).index)
+            time_deltas = combined_index - combined_index.shift()
+            min_time_delta = time_deltas.min()
+
+            if min_time_delta < pd.Timedelta(days=0,minutes=30, seconds=0):
+                 min_time_delta = pd.Timedelta(days=0,minutes=30, seconds=0)
+            '''
+
+            return min_time_delta
+
+        minimum_time_delta = self.parent.calc_or_cache(
+            'get_minimum_time_delta', instrument_code, _ins_volatility_denominator, self,
+            rule_variation_list)
+
+        return minimum_time_delta
 
         forecast_weights = self.parent.calc_or_cache(
             'get_forecast_weights', instrument_code, _get_forecast_weights, self)

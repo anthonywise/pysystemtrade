@@ -123,6 +123,8 @@ class tscsvFuturesData(csvFuturesData):
         instrpricedata.columns = ["close_price", "open_price", "high_price", "low_price", "volume"]
         instrpricedata = instrpricedata.groupby(level=0).last()
         instrpricedata = pd.DataFrame(instrpricedata)
+        instrpricedata = instrpricedata.asfreq('15T')  # new
+        #instrpricedata.index = pd.DatetimeIndex(instrpricedata.index, freq='15T')
         return instrpricedata
 
     def get_raw_daily_data(self, instrument_code):
@@ -156,6 +158,7 @@ class tscsvFuturesData(csvFuturesData):
         '''
         TODO: May be a more efficient way to the do the following
         (see http://pandas.pydata.org/pandas-docs/stable/timeseries.html / Parametric Offsets)
+        TODO: also, can clean up by using variables from dateutils.
         '''
         nextday = datetime(1900, 1, 2, 0, 0)
         shift_hours = (nextday - starttimedate).seconds / 3600.0  # Seconds / Hour
@@ -338,7 +341,7 @@ class tscsvFuturesData(csvFuturesData):
         thirty_min = rawdata.resample('30T', label='right', closed='right').agg({'close_price': "last",
                                                             'open_price': "first",'high_price': np.max,
                                                             'low_price': np.min,'volume': np.sum})
-        thirty_min = thirty_min.dropna(how='all')
+        #thirty_min = thirty_min.dropna(how='all')
         return thirty_min
 
     def get_45min_data(self, instrument_code):
@@ -362,7 +365,7 @@ class tscsvFuturesData(csvFuturesData):
                                                                                  'open_price': "first",
                                                                                  'high_price': np.max,
                                                                                  'low_price': np.min, 'volume': np.sum})
-        fortyfive_min = fortyfive_min.dropna(how='all')
+        # fortyfive_min = fortyfive_min.dropna(how='all')
         return fortyfive_min
 
     def get_60min_data(self, instrument_code):
@@ -387,7 +390,7 @@ class tscsvFuturesData(csvFuturesData):
                                                                                     'high_price': np.max,
                                                                                     'low_price': np.min,
                                                                                     'volume': np.sum})
-        sixty_min = sixty_min.dropna(how='all')
+        #sixty_min = sixty_min.dropna(how='all')
         return sixty_min
 
     def get_90min_data(self, instrument_code):
@@ -412,7 +415,7 @@ class tscsvFuturesData(csvFuturesData):
                                                                                     'high_price': np.max,
                                                                                     'low_price': np.min,
                                                                                     'volume': np.sum})
-        ninety_min = ninety_min.dropna(how='all')
+        #ninety_min = ninety_min.dropna(how='all')
         return ninety_min
 
     def get_120min_data(self, instrument_code):
@@ -437,7 +440,7 @@ class tscsvFuturesData(csvFuturesData):
                                                                                     'high_price': np.max,
                                                                                     'low_price': np.min,
                                                                                     'volume': np.sum})
-        onehundredtwenty_min = onehundredtwenty_min.dropna(how='all')
+        #onehundredtwenty_min = onehundredtwenty_min.dropna(how='all')
         return onehundredtwenty_min
 
     def get_weekly_data(self, instrument_code):
@@ -462,7 +465,7 @@ class tscsvFuturesData(csvFuturesData):
                                                                                             'high_price': np.max,
                                                                                             'low_price': np.min,
                                                                                             'volume': np.sum})
-        weekly = weekly.dropna(how='all')
+        #weekly = weekly.dropna(how='all')
         return weekly
 
     def get_monthly_data(self, instrument_code):
@@ -487,5 +490,5 @@ class tscsvFuturesData(csvFuturesData):
                                                                                'high_price': np.max,
                                                                                'low_price': np.min,
                                                                                'volume': np.sum})
-        monthly = monthly.dropna(how='all')
+        #monthly = monthly.dropna(how='all')
         return monthly
