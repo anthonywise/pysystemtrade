@@ -285,8 +285,10 @@ def get_positions_from_forecasts(price, get_daily_returns_volatility, forecast,
     """
     if daily_risk_capital is None:
         daily_risk_capital=DEFAULT_DAILY_CAPITAL
-        
-    multiplier = daily_risk_capital * 1.0 * 1.0 / 10.0  # TODO: Why divide by 10? bc of average absolute forecast?
+
+    multiplier = daily_risk_capital * 1.0 * 1.0 / 10.0  # No need to change bc arbitrary risk target
+    # average_forecast=self.parent.config.average_absolute_forecast
+    # multiplier = daily_risk_capital * 1.0 * 1.0 / average_forecast
 
     denominator = (value_of_price_point * get_daily_returns_volatility* use_fx)
     denominator = denominator.reindex(forecast.index, method='ffill')

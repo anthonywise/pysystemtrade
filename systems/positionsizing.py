@@ -78,11 +78,11 @@ class PositionSizing(SystemStage):
     def get_instrument_volatility_denominator(self, instrument_code):
         """
         Get the instrument specific denominator to divide volatility appropriate
-         for instrument from previous module
+        for instrument from previous module
         :param instrument_code: instrument to get denominator for
         :type instrument_code: str
 
-        :return: float
+        :return: tuple (str, Timedelta, float): rule_variation_name, min_time_delta, denominator
         """
         return self.parent.combForecast.instrument_volatility_denominator(
             instrument_code, rule_variation_list=None)
@@ -467,7 +467,7 @@ class PositionSizing(SystemStage):
                 instrument_code)
 
             denominator = this_stage.get_instrument_volatility_denominator(
-                instrument_code)
+                instrument_code)['denominator']
 
             ins_vol_scalar = daily_vol_scalar / denominator
 

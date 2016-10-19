@@ -277,8 +277,9 @@ class Account(SystemStage):
         def _get_instrument_price(system, instrument_code, this_stage):
             """
             USE price TF appropriate for the particular instrument, comes from
-            system.accounts.get_subsystem_position (a random freq interval)
+            system.combForecast.instrument_volatility_denominator
             """
+            '''
             sspos = this_stage.get_subsystem_position(instrument_code)
             # TODO: this only works for now since I know raw_price is 5min like sspos...
             raw_price = system.rawdata.get_raw_close(instrument_code)
@@ -286,8 +287,24 @@ class Account(SystemStage):
             # raw_price = raw_price.reindex(sspos.index).ffill()
             # Do not ffill() (1) so that returns are not overstated (2) returns/cumsum() matches up with upstream
             raw_price = raw_price.reindex(sspos.index)
+            '''
 
-            return raw_price
+            rule_variation_name = \
+                self.parent.combForecast.instrument_volatility_denominator(instrument_code)['rule_variation_name']
+            data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
+            if 'get_daily_prices' in data_params:
+                instrument_price = None
+            else:
+                sspos = this_stage.get_subsystem_position(instrument_code)
+                data_func = resolve_data_method(system, data_params)
+                raw_data = data_func(instrument_code)
+                if type(raw_data) is pd.DataFrame:
+                    instrument_price = pd.Series(raw_data.close_price)
+                else:
+                    instrument_price = raw_data
+                instrument_price = instrument_price.reindex(sspos.index)  # note: lose the 'freq'
+
+            return instrument_price
 
         instrument_price = self.parent.calc_or_cache(
                 'get_instrument_price', instrument_code,
@@ -1726,11 +1743,6 @@ class Account(SystemStage):
 
             #USE price TF appropriate for the particular rule
             relevant_price = this_stage.get_trading_rule_price(instrument_code, rule_variation_name)
-            #data_params = copy(system.config.trading_rules[rule_variation_name]["data"][0])
-            #data_func = resolve_data_method(system, data_params)
-            #relevant_price = data_func(instrument_code)
-            # only need relevant_price for tscsvFuturesData, don't need for
-            # csvFuturesData (yet) as only using daily data.
 
             """
             # using minute data for forecasts
