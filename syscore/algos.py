@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 
 from syscore.genutils import str2Bool
+from syscore.dateutils import TS_ROOT_BDAYS_INYEAR
 from systems.defaults import system_defaults
 
 LARGE_NUMBER_OF_DAYS=250*100*100
@@ -268,6 +269,127 @@ def apply_buffer(optimal_position, pos_buffers, trade_to_edge=False, roundpositi
     buffered_position = pd.Series(buffered_position_list, index = optimal_position.index)
     
     return buffered_position
+
+def true_high(x, lookback=1):
+    """
+    Returns the true high
+
+    :param x: OHLCV price data
+    :type x: Tx5 pd.DataFrame
+
+    :param lookback: how many closes back in which to determine true high
+    :type lookback: int
+
+    :param min_periods: The minimum number of observations (*default* 10)
+    :type min_periods: int
+
+    :returns: pd.Series
+    """
+    #roll_max = pd.rolling_max(x.high_price, lookback, min_periods=min_periods)
+    th = pd.Series(index=x.index)
+    th[0] = x.close_price[0]
+    th[x.high_price >= x.close_price.shift(lookback)] = x.high_price
+
+    th[x.high_price < x.close_price.shift(lookback)] = x.close_price.shift(lookback)
+
+    return th
+
+def true_low(x, lookback=1):
+    """
+    Returns the true low
+
+    :param x: OHLCV price data
+    :type x: Tx5 pd.DataFrame
+
+    :param lookback: how many closes back in which to determine true high
+    :type lookback: int
+
+    :param min_periods: The minimum number of observations (*default* 10)
+    :type min_periods: int
+
+    :returns: pd.Series
+    """
+    tl = pd.Series(index=x.index)
+    tl[0] = x.close_price[0]
+    tl[x.low_price <= x.close_price.shift(lookback)] = x.low_price
+
+    tl[x.low_price > x.close_price.shift(lookback)] = x.close_price.shift(lookback)
+
+    return tl
+
+def true_range(x, lookback=1):
+    """
+    Returns the true range
+
+    :param x: OHLCV price data
+    :type x: Tx5 pd.DataFrame
+
+    :param lookback: how many closes back in which to determine true high
+    :type lookback: int
+
+    :param min_periods: The minimum number of observations (*default* 10)
+    :type min_periods: int
+
+    :returns: pd.Series
+    """
+    return true_high(x, lookback) - true_low(x, lookback)
+
+def ts_ATR(x, lookback=1, period=20):
+    """
+    Returns the average true range as calculated by TradeStation
+
+    :param x: OHLCV price data
+    :type x: Tx5 pd.DataFrame
+
+    :param lookback: how many closes back in which to determine true values
+    :type lookback: int
+
+    :param period: period for averaging
+    :type period: int
+
+    :returns: pd.Series
+    """
+    return true_range(x, lookback).rolling(period, center=False).mean()
+
+def ATR(x, lookback=1, period=20):
+    """
+    Returns the average true range as calculated by the typical ewma formula
+
+    :param x: OHLCV price data
+    :type x: Tx5 pd.DataFrame
+
+    :param lookback: how many closes back in which to determine true values
+    :type lookback: int
+
+    :param period: period for averaging
+    :type period: int
+
+    :returns: pd.Series
+    """
+    return true_range(x, lookback).ewm(period).mean()
+
+def atr_percentage(x, lookback=1, period=20):
+    return ATR(x, lookback, period) / x.close_price
+'''
+def ts_std_dev(x):
+    num_days = len(x)
+'''
+
+def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
+    """
+        Returns the annualized volatility as calculated by TradeStation
+
+        :param x: daily closing prices
+        :type x: Tx1 pd.Series
+
+        :param period: size of the moving window
+        :type period: int
+
+        :returns: pd.Series
+        """
+    returns = np.log(x / x.shift())
+    return TS_ROOT_BDAYS_INYEAR * pd.rolling_std(returns, window=period, ddof=pop_or_samp)
+
 
 if __name__ == '__main__':
     import doctest
