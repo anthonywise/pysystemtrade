@@ -2,6 +2,17 @@ from systems.stage import SystemStage
 from copy import copy
 
 from syscore.objects import resolve_function
+from syscore.objects import resolve_data_method
+
+from syscore.fileutils import get_pathname_for_package
+from syscore.fileutils import get_filename_for_package
+from syscore.pdutils import pd_readcsv
+from syscore.genutils import str_of_int
+
+"""
+Static variables to store location of EO functions
+"""
+EO_DATA_PATH = "private.sigtg.EO"
 
 
 class RawData(SystemStage):
@@ -26,14 +37,18 @@ class RawData(SystemStage):
     Name: rawdata
     """
 
-    def __init__(self):
+    def __init__(self, eodatapath=None):
         """
         Create a new stage: raw data object
 
         """
 
+        if eodatapath is None:
+            eodatapath = EO_DATA_PATH
+
         setattr(self, "name", "rawdata")
         setattr(self, "description", "")
+        setattr(self, "_eodatapath", eodatapath)
 
     def _system_init(self, system):
         ## method called once we have a system
@@ -264,6 +279,82 @@ class RawData(SystemStage):
             "_norm_return_dict", instrument_code, _norm_returns, self)
 
         return norm_returns
+
+    def environmental_overlay(self, instrument_code, rule_variation_name):
+        """
+        Gets the appropriate environmental overlay
+
+        This is done using a user defined function
+
+        We get this from:
+          the configuration object
+          or if not found, system.defaults.py
+
+        The dict must contain func key; anything else is optional
+
+        KEY OUTPUT
+
+        :param instrument_code: Instrument to get prices for
+        :type trading_rules: str
+
+        :returns: Tx1 pd.DataFrame
+
+        >>> from systems.tests.testdata import get_test_object
+        >>> from systems.basesystem import System
+        >>>
+        >>> (rawdata, data, config)=get_test_object()
+        >>> system=System([rawdata], data)
+        >>> ## uses defaults
+        >>> system.rawdata.daily_returns_volatility("EDOLLAR").tail(2)
+                         vol
+        2015-12-10  0.054145
+        2015-12-11  0.058522
+        >>>
+        >>> from sysdata.configdata import Config
+        >>> config=Config("systems.provided.example.exampleconfig.yaml")
+        >>> system=System([rawdata], data, config)
+        >>> system.rawdata.daily_returns_volatility("EDOLLAR").tail(2)
+                         vol
+        2015-12-10  0.054145
+        2015-12-11  0.058522
+        >>>
+        >>> config=Config(dict(volatility_calculation=dict(func="syscore.algos.robust_vol_calc", days=200)))
+        >>> system2=System([rawdata], data, config)
+        >>> system2.rawdata.daily_returns_volatility("EDOLLAR").tail(2)
+                         vol
+        2015-12-10  0.057946
+        2015-12-11  0.058626
+
+        """
+
+        def _environmental_overlay(system, instrument_code, this_stage, rule_variation_name):
+            this_stage.log.msg("Calculating EO for %s" % instrument_code, instrument_code=instrument_code)
+
+            # dailyreturns = this_stage.daily_returns(instrument_code)
+            # rawdailyprice = this_stage.get_raw_daily_prices(instrument_code)
+
+            eoconfig = copy(system.config.trading_rules[rule_variation_name]["environmental_overlay"])
+            eofunc = eoconfig['EO']
+            eoPhase = eoconfig['Phase']
+            eofuncpath = self._eodatapath + "." + eofunc
+            # eofuncpath = get_pathname_for_package(eofuncpath)
+            eofunction = resolve_function(eofuncpath)
+
+            if eoconfig['EOprice'] is None:
+                eoprice = this_stage.get_raw_daily_prices(instrument_code)
+            else:
+                data_func = resolve_data_method(system, eoconfig['EOprice'])
+                eoprice = data_func(instrument_code)
+
+            eodata = eofunction(eoprice, **eoconfig)  #TODO: add to config for EO inputs
+            eodata = eodata.iloc[:, eoPhase]  #TODO: or need pd.Series ?
+
+            return eodata
+
+        eodata = self.parent.calc_or_cache(
+            "environmental_overlay", instrument_code, _environmental_overlay, self)
+
+        return eodata
 
 
 if __name__ == '__main__':

@@ -10,7 +10,7 @@ import pandas as pd
 import numpy as np
 import yaml
 from datetime import datetime, timedelta
-import time
+# import time
 
 from syscore.fileutils import get_pathname_for_package
 from syscore.fileutils import get_filename_for_package
@@ -19,8 +19,8 @@ from syscore.genutils import str_of_int
 
 from sysdata.csvdata import csvFuturesData
 
-from collections import deque
-from copy import copy, deepcopy
+# from collections import deque
+from copy import copy  # , deepcopy
 
 """
 Static variables to store location of data
@@ -152,7 +152,9 @@ class tscsvFuturesData(csvFuturesData):
         # Get daily start and end times
         starttime = self.get_all_trading_hours().loc[instrument_code][0]
         starttimedate = datetime.strptime(starttime, '%H:%M')
-        # endtime = self.get_all_trading_hours().loc[instrument_code][1]  # Not needed
+        endtime = self.get_all_trading_hours().loc[instrument_code][1]  # Not needed
+        endtimetime = datetime.strptime(endtime, '%H:%M').time()
+        endtimedelta = timedelta(hours=endtimetime.hour, minutes=endtimetime.minute)
 
         # Get amount of hours needed to add to time shift
         '''
@@ -184,6 +186,8 @@ class tscsvFuturesData(csvFuturesData):
         '''
         dailydata.index = pd.DatetimeIndex(dailydata.index) # make sure it's a Datetime index
         dailydata = dailydata.dropna(how='all')
+        dailydata.index = dailydata.index + pd.Timedelta(endtimedelta)
+
         return dailydata
 
     def get_raw_close(self, instrument_code):

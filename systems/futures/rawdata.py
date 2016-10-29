@@ -33,7 +33,7 @@ class FuturesRawData(RawData):
 
         protected = ['get_raw_data', 'get_raw_close', 'get_daily_data', 'get_30min_data', 'get_45min_data',
                      'get_60min_data', 'get_90min_data', 'get_120min_data', 'get_weekly_data',
-                     'get_monthly_data']
+                     'get_monthly_data', 'get_raw_daily_prices']
         update_recalc(self, protected)
         
         setattr(self, "description", "futures")
@@ -304,6 +304,32 @@ class FuturesRawData(RawData):
                                          _get_raw_close, self)
 
         return raw_close
+
+    def get_raw_daily_prices(self, instrument_code):
+        """
+        Get raw daily closing prices (not resampled to '1B')
+
+        :param instrument_code: instrument to get data for
+        :type instrument_code: str
+
+        :returns: pd.DataFrame
+
+        >>> data=tscsvFuturesData("sysdata.tests")
+        >>> data.get_raw_close("CORN").tail(2)
+        2016-06-29 19:15:00    379.5
+        2016-06-29 19:20:00    379.5
+        """
+
+        def _get_raw_daily_prices(system, instrument_code, this_stage_notused):
+            rawinstrprice = system.data.get_raw_price(
+                instrument_code)
+            return rawinstrprice
+
+        raw_daily_close = self.parent.calc_or_cache("raw_daily_close_prices",
+                                              instrument_code,
+                                              _get_raw_daily_prices, self)
+
+        return raw_daily_close
 
     def get_daily_data(self, instrument_code):
         """

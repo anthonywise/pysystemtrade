@@ -379,7 +379,7 @@ def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
     """
         Returns the annualized volatility as calculated by TradeStation
 
-        :param x: daily closing prices
+        :param x: raw daily closing prices
         :type x: Tx1 pd.Series
 
         :param period: size of the moving window
