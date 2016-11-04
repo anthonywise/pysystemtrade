@@ -1,9 +1,15 @@
+import pandas as pd
+
 from copy import copy
 
 from systems.stage import SystemStage
 from syscore.objects import resolve_function, resolve_data_method, hasallattr
 
-DEFAULT_PRICE_SOURCE="data.daily_prices"
+"""
+Static variables to store location of EO functions
+"""
+EO_DATA_PATH = "private.sigtg.EO"
+DEFAULT_PRICE_SOURCE = "data.daily_prices"
 
 class Rules(SystemStage):
     """
@@ -138,7 +144,7 @@ class Rules(SystemStage):
 
             trading_rule = rules_stage.trading_rules()[rule_variation_name]
 
-            result = trading_rule.call(system, instrument_code)
+            result = trading_rule.call(system, instrument_code, rule_variation_name)
             result.columns = [rule_variation_name]
 
             return result
@@ -159,7 +165,7 @@ class TradingRule(object):
 
     """
 
-    def __init__(self, rule, data=list(), other_args=dict()):
+    def __init__(self, rule, data=list(), other_args=dict(), eodatapath=None):
         """
         Create a trading rule from a function
 
@@ -243,9 +249,13 @@ class TradingRule(object):
             # turn into a 1 item list or wont' get parsed properly
             data = [data]
 
+        if eodatapath is None:
+            eodatapath = EO_DATA_PATH
+
         setattr(self, "function", rule_function)
         setattr(self, "data", data)
         setattr(self, "other_args", other_args)
+        setattr(self, "_eodatapath", eodatapath)
 
     def __repr__(self):
         data_names = ", ".join(self.data)
@@ -253,7 +263,7 @@ class TradingRule(object):
         return "TradingRule; function: %s, data: %s and other_args: %s" % (
             str(self.function), data_names, args_names)
 
-    def call(self, system, instrument_code):
+    def call(self, system, instrument_code, rule_variation_name):
         """
         Actually call a trading rule
 
@@ -273,6 +283,49 @@ class TradingRule(object):
         data = [data_method(instrument_code) for data_method in data_methods]
 
         other_args = self.other_args
+
+        if 'UseEO' in other_args:
+                    if other_args['UseEO'] is True:
+                        eoconfig = copy(system.config.trading_rules[rule_variation_name]['other_args'])
+                        eofunc = eoconfig['EO']
+                        if 'No EO' in eofunc or eofunc is False or eofunc is None:
+                            system.log.warn(
+                                "EO set to 'True' for %s-%s, but no EO is selected. Calculating with No EO" %
+                                (instrument_code, rule_variation_name),
+                                instrument_code=instrument_code, rule_variation_name=rule_variation_name)
+                            eodata = 1
+                            #data.append(eodata)
+                            other_args['eodata'] = eodata
+                        else:
+                            eoPhase = eoconfig['Phase']
+                            eofuncpath = self._eodatapath + "." + eofunc
+                            # eofuncpath = get_pathname_for_package(eofuncpath)
+                            eofunction = resolve_function(eofuncpath)
+
+                            if 'eo_price' in system.config.trading_rules[rule_variation_name]:
+                                eopriceconfig = copy(system.config.trading_rules[rule_variation_name]['eo_price'])
+                                if eopriceconfig is None:
+                                    eoprice = system.rawdata.get_raw_daily_prices(instrument_code)
+                                else:
+                                    eo_price_func = resolve_data_method(system, eopriceconfig)
+                                    eoprice = eo_price_func(instrument_code)
+                            else:
+                                eoprice = system.rawdata.get_raw_daily_prices(instrument_code)
+
+                            if 'eo_inputs' in system.config.trading_rules[rule_variation_name]:
+                                eoinputs = copy(system.config.trading_rules[rule_variation_name]['eo_inputs'])
+                                eodata = eofunction(eoprice, **eoinputs)
+                            else:
+                                eodata = eofunction(eoprice)
+
+                            # eodata = eofunction(eoprice, **eoinputs)
+                            eodata = eodata.iloc[:, eoPhase]
+                            #data.append(eodata)               #TODO: works, but losing my Freq Index WHEN IT concats in the strategy
+                            other_args['eodata'] = eodata
+                    else:
+                        eodata = 1
+                        #data.append(eodata)
+                        other_args['eodata'] = eodata
 
         return self.function(*data, **other_args)
 

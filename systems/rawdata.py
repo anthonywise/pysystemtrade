@@ -279,7 +279,7 @@ class RawData(SystemStage):
             "_norm_return_dict", instrument_code, _norm_returns, self)
 
         return norm_returns
-
+    '''
     def environmental_overlay(self, instrument_code, rule_variation_name):
         """
         Gets the appropriate environmental overlay
@@ -328,34 +328,40 @@ class RawData(SystemStage):
         """
 
         def _environmental_overlay(system, instrument_code, this_stage, rule_variation_name):
-            this_stage.log.msg("Calculating EO for %s" % instrument_code, instrument_code=instrument_code)
+            this_stage.log.msg("Calculating EO for %s %s" % (instrument_code, rule_variation_name),
+                               instrument_code=instrument_code, rule_variation_name=rule_variation_name)
 
             # dailyreturns = this_stage.daily_returns(instrument_code)
             # rawdailyprice = this_stage.get_raw_daily_prices(instrument_code)
 
             eoconfig = copy(system.config.trading_rules[rule_variation_name]["environmental_overlay"])
             eofunc = eoconfig['EO']
-            eoPhase = eoconfig['Phase']
-            eofuncpath = self._eodatapath + "." + eofunc
-            # eofuncpath = get_pathname_for_package(eofuncpath)
-            eofunction = resolve_function(eofuncpath)
-
-            if eoconfig['EOprice'] is None:
-                eoprice = this_stage.get_raw_daily_prices(instrument_code)
+            if 'No EO' in eofunc or eofunc is False or eofunc is None:
+                eodata = 1
             else:
-                data_func = resolve_data_method(system, eoconfig['EOprice'])
-                eoprice = data_func(instrument_code)
+                eoPhase = eoconfig['Phase']
+                eofuncpath = self._eodatapath + "." + eofunc
+                # eofuncpath = get_pathname_for_package(eofuncpath)
+                eofunction = resolve_function(eofuncpath)
 
-            eodata = eofunction(eoprice, **eoconfig)  #TODO: add to config for EO inputs
-            eodata = eodata.iloc[:, eoPhase]  #TODO: or need pd.Series ?
+                if eoconfig['EOprice'] is None:
+                    eoprice = this_stage.get_raw_daily_prices(instrument_code)
+                else:
+                    data_func = resolve_data_method(system, eoconfig['EOprice'])
+                    eoprice = data_func(instrument_code)
+
+                eoinputs = copy(system.config.trading_rules[rule_variation_name]["eo_inputs"])
+
+                eodata = eofunction(eoprice, **eoinputs)  #TODO: add to config for EO inputs
+                eodata = eodata.iloc[:, eoPhase]  #TODO: or need pd.Series ?
 
             return eodata
-
-        eodata = self.parent.calc_or_cache(
-            "environmental_overlay", instrument_code, _environmental_overlay, self)
+        #TODO: Nested
+        eodata = self.parent.calc_or_cache_nested(
+            "environmental_overlay", instrument_code, rule_variation_name, _environmental_overlay, self)
 
         return eodata
-
+    '''
 
 if __name__ == '__main__':
     import doctest
