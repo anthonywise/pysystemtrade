@@ -1213,7 +1213,7 @@ class ForecastCombineEstimated(ForecastCombineFixed):
                 denominator = ROOT_ONETWENTY_IN_DAY
             elif min_time_delta == Timedelta(days=1):
                 denominator = 1.0
-            elif min_time_delta == Timedelta(weekss=1):
+            elif min_time_delta == Timedelta(weeks=1):
                 denominator = ROOT_WEEKS_IN_DAY
             elif min_time_delta < Timedelta(days=34):
                 denominator = ROOT_MONTHS_IN_DAY
