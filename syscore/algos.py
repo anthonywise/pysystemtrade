@@ -375,6 +375,22 @@ def ts_std_dev(x):
     num_days = len(x)
 '''
 
+def ts_XAverage(x, price='close_price', length=9):
+    '''
+    smoothing_factor = 1 / length
+    xavg = pd.Series(index=x.index)
+    xavg[0] = x[price].iloc[0]
+    for i in range(1, len(x)):
+        xavg[i] = xavg[i-1] + smoothing_factor * (x[price].iloc[i] - xavg[i-1])
+
+    '''
+    if type(x) is pd.DataFrame:
+        x = x[price]
+    # smoothing_factor = 2 / (length + 1)
+    xavg = x.ewm(span=length, adjust=False, ignore_na=True).mean()
+
+    return xavg
+
 def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
     """
         Returns the annualized volatility as calculated by TradeStation
@@ -389,6 +405,72 @@ def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
         """
     returns = np.log(x / x.shift())
     return TS_ROOT_BDAYS_INYEAR * pd.rolling_std(returns, window=period, ddof=pop_or_samp)
+
+def ts_MACD(x, price='close_price', fast_length=12, slow_length=26, macd_length=9):
+    macd = (x[price].ewm(span=fast_length, adjust=False, ignore_na=True).mean() -
+            x[price].ewm(span=slow_length, adjust=False, ignore_na=True).mean()).rename('macd')
+    macd_avg = (macd.ewm(span=macd_length, adjust=False, ignore_na=True).mean()).rename('macd_avg')
+    macd_diff = (macd - macd_avg).rename('macd_diff')
+    return (macd, macd_avg, macd_diff)
+
+def ts_TRIX(x, price='close_price', length=9):
+    tx = ((np.log(x[price]).ewm(span=length, adjust=False, ignore_na=True).mean())
+          .ewm(span=length, adjust=False, ignore_na=True).mean())\
+        .ewm(span=length, adjust=False, ignore_na=True).mean()
+    return tx.diff() * 10000
+
+def ts_pivot(x, length, left_strength, right_strength,
+             instance, hi_lo, o_pivot_price, o_pivot_bar, price='close_price'):
+    if type(x) is pd.DataFrame:
+        x = x[price]
+
+    if instance is None:
+        instance = 1
+
+    if hi_lo is None:
+        hi_lo = -1
+
+    # individual pivots
+    '''
+    left_pivot = x.diff()
+    left_pivot[left_pivot < 0] = -1  # Lower current value
+    left_pivot[left_pivot > 0] = 1   # Higher current value
+
+    right_pivot = x.diff(-1)
+    right_pivot[right_pivot < 0] = -1  # Lower current value
+    right_pivot[right_pivot > 0] = 1  # Higher current value
+    '''
+
+    o_pivot_price = pd.Series([-1] * len(x.index), index=x.index)
+    o_pivot_bar = pd.Series([-1] * len(x.index), index=x.index)
+
+    roll_max = x.shift(right_strength).rolling(window=left_strength).max()
+    roll_min = x.shift(right_strength).rolling(window=left_strength).min()
+
+    pivots = pd.Series(len(x.index) * [0], index=x.index)
+    pivots[(x.shift() < x) & (x > x.shift(-1))] = 1
+    pivots[(x.shift() > x) & (x < x.shift(-1))] = -1
+
+    if hi_lo == -1:
+        o_pivot_price[x1 == -1] = x
+
+    d = {'values' : x, 'length' : length, 'left_strength': left_strength,
+         'right_strength' : right_strength, 'instance' : instance, 'hi_lo' : hi_lo,
+         'o_pivot_price' : o_pivot_price, 'o_pivot_bar' : o_pivot_bar}
+    pivots = pd.DataFrame(data=d)
+    pivots = pivots[
+        ['values', 'length', 'left_strength', 'right_strength', 'instance',
+         'hi_lo', 'o_pivot_price', 'o_pivot_bar']]
+    length_center = right_strength
+    strength_center = length_center + 1
+    pivots['length_center', 'strength_center'] = length_center, strength_center
+    x[price]
+
+def ts_pivot_low_vs_bar(instance, price, left_strength, right_strength, length):
+    o_pivot_price = 0
+    o_pivot_bar = 0
+    value1 = ts_pivot(price, length, left_strength, right_strength, instance, -1, o_pivot_price, o_pivot_bar)
+    return o_pivot_bar
 
 
 if __name__ == '__main__':
