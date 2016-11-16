@@ -391,7 +391,7 @@ def ts_XAverage(x, price='close_price', length=9):
 
     return xavg
 
-def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
+def ts_volatility_std_dev(x, price='close_price', period=30, pop_or_samp=0):
     """
         Returns the annualized volatility as calculated by TradeStation
 
@@ -403,18 +403,28 @@ def ts_volatility_std_dev(x, period=30, pop_or_samp=0):
 
         :returns: pd.Series
         """
+    if type(x) is pd.DataFrame:
+        x = x[price]
+
     returns = np.log(x / x.shift())
     return TS_ROOT_BDAYS_INYEAR * pd.rolling_std(returns, window=period, ddof=pop_or_samp)
 
 def ts_MACD(x, price='close_price', fast_length=12, slow_length=26, macd_length=9):
-    macd = (x[price].ewm(span=fast_length, adjust=False, ignore_na=True).mean() -
-            x[price].ewm(span=slow_length, adjust=False, ignore_na=True).mean()).rename('macd')
+    if type(x) is pd.DataFrame:
+        x = x[price]
+
+    macd = (x.ewm(span=fast_length, adjust=False, ignore_na=True).mean() -
+            x.ewm(span=slow_length, adjust=False, ignore_na=True).mean()).rename('macd')
+
     macd_avg = (macd.ewm(span=macd_length, adjust=False, ignore_na=True).mean()).rename('macd_avg')
     macd_diff = (macd - macd_avg).rename('macd_diff')
+
     return (macd, macd_avg, macd_diff)
 
 def ts_TRIX(x, price='close_price', length=9):
-    tx = ((np.log(x[price]).ewm(span=length, adjust=False, ignore_na=True).mean())
+    if type(x) is pd.DataFrame:
+        x = x[price]
+    tx = ((np.log(x).ewm(span=length, adjust=False, ignore_na=True).mean())
           .ewm(span=length, adjust=False, ignore_na=True).mean())\
         .ewm(span=length, adjust=False, ignore_na=True).mean()
     return tx.diff() * 10000
