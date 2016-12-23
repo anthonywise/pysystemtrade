@@ -69,37 +69,7 @@ class tscsvPortfolio(Portfolio):
         """
         setattr(self, "_tsportfoliopath", tsportfoliopath)
         setattr(self, "_tsdatapathyaml", tsdatapathyaml)
-    '''
-    def get_raw_price(self, instrument_code):
-        """
-        Get instrument price
 
-        :param instrument_code: instrument to get prices for
-        :type instrument_code: str
-
-        :returns: pd.DataFrame
-
-        >>> data=tscsvFuturesData("sysdata.tests")
-        >>> data.get_raw_price("CORN").tail(2)
-        2016-06-09    426.5
-        2016-06-10    423.0
-        Name: price, dtype: float64
-        >>> data["US10"].tail(2)
-        2015-12-11 16:06:35    126.914062
-        2015-12-11 17:24:06    126.945312
-        Name: price, dtype: float64
-        """
-
-        # Read from .csv
-        self.log.msg("Retrieving TradeStation Daily Closing Prices for %s" % instrument_code, instrument_code=instrument_code)
-        #filename = os.path.join(self._tsdatapath, instrument_code + "_data.csv")
-        #instrprice = pd_readcsv(filename)
-        #instrprice.columns = ["price", "open_price", "high_price", "low_price", "volume"]
-        #instrprice = instrprice.groupby(level=0).last()
-        instrpricedataframe = self.get_raw_daily_data(instrument_code)
-        instrprice = pd.Series(instrpricedataframe.close_price)
-        return instrprice
-    '''
     def get_raw_equity_curve(self, system_code):
         """
         Get raw equity curve data
@@ -132,3 +102,74 @@ class tscsvPortfolio(Portfolio):
         #instrpricedata.index = pd.DatetimeIndex(instrpricedata.index, freq='15T')
         '''
         return equitycurve
+
+    def _get_all_cost_data(self):
+        """
+        Get a data frame of cost data
+
+        :returns: pd.DataFrame
+
+        >>> data=csvFuturesData("sysdata.tests")
+        >>> data._get_all_cost_data()
+                   Instrument  Slippage  PerBlock  Percentage  PerTrade
+        Instrument
+        BUND             BUND    0.0050      2.00           0         0
+        US10             US10    0.0080      1.51           0         0
+        EDOLLAR       EDOLLAR    0.0025      2.11           0         0
+        """
+
+        self.log.msg("Loading csv cost file")
+
+        filename = os.path.join(self._tsportfoliopath, "costs_analysis.csv")
+        try:
+            instr_data = pd.read_csv(filename)
+            instr_data.index = instr_data.Instrument
+
+            return instr_data
+        except OSError:
+            self.log.warn("Cost file not found %s" % filename)
+            return None
+
+    def get_raw_cost_data(self, instrument_code):
+        """
+        Get's cost data for an instrument
+
+        Get cost data
+
+        Execution slippage [half spread] price units
+        Commission (local currency) per block
+        Commission - percentage of value (0.01 is 1%)
+        Commission (local currency) per block
+
+        :param instrument_code: instrument to value for
+        :type instrument_code: str
+
+        :returns: dict of floats
+
+        >>> data=csvFuturesData("sysdata.tests")
+        >>> data.get_raw_cost_data("EDOLLAR")['price_slippage']
+        0.0025000000000000001
+        """
+
+        default_costs = dict(price_slippage=0.0,
+                             value_of_block_commission=0.0,
+                             percentage_cost=0.0,
+                             value_of_pertrade_commission=0.0)
+
+        cost_data = self._get_all_cost_data()
+
+        if cost_data is None:
+            ##
+            return default_costs
+
+        try:
+            block_move_value = cost_data.loc[instrument_code, ['Slippage', 'PerBlock', 'Percentage', 'PerTrade']]
+        except KeyError:
+            self.log.warn("Cost data not found for %s, using zero" % instrument_code)
+            return default_costs
+
+        return dict(price_slippage=block_move_value[0],
+                    value_of_block_commission=block_move_value[1],
+                    percentage_cost=block_move_value[2],
+                    value_of_pertrade_commission=block_move_value[3])
+

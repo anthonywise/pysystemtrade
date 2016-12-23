@@ -109,7 +109,7 @@ class Portfolio(object):
         []
         """
         return self.get_equity_curve_list()
-    '''
+
     def get_value_of_block_price_move(self, instrument_code):
         """
         How much does a $1 (or whatever) move in the price of an instrument block affect it's value?
@@ -279,7 +279,7 @@ class Portfolio(object):
         fx_rate_series = self._get_fx_cross(instrument_currency, base_currency)
 
         return fx_rate_series
-    '''
+
 
 if __name__ == '__main__':
     import doctest
