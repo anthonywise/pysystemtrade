@@ -35,7 +35,7 @@ class Portfolio(object):
         Portfolio socket base class
         """
         ## this will normally be overriden by the base system
-        setattr(self, "log", logtoscreen( stage="portfolio"))
+        setattr(self, "log", logtoscreen( stage="tsportfolio"))
 
     def __repr__(self):
         return "Portfoio object with %d equity curves" % len(
